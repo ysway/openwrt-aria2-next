@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>aria2 Static Feed for OpenWrt</title>
-  <meta name="description" content="Static aria2 packages and raw binaries for OpenWrt, published from GitHub Actions with per-architecture package metadata.">
-  <meta name="keywords" content="OpenWrt, aria2, static build, ipk, apk, package feed, GitHub Pages">
+  <title>aria2-next Static Feed for OpenWrt</title>
+  <meta name="description" content="Static aria2-next packages and raw binaries for OpenWrt, published from GitHub Actions with per-architecture package metadata.">
+  <meta name="keywords" content="OpenWrt, aria2-next, aria2, static build, ipk, apk, package feed, GitHub Pages">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,9 +13,9 @@
     <header class="hero">
       <section class="hero-copy">
         <p class="eyebrow">OpenWrt Package Feed</p>
-        <h1>aria2 Static Feed</h1>
+        <h1>aria2-next Static Feed</h1>
         <p class="lede">
-          Prebuilt static aria2 packages for OpenWrt with HTTPS, BitTorrent, Metalink, XML-RPC,
+          Prebuilt static aria2-next packages for OpenWrt with HTTPS, ED2K, BitTorrent, Metalink, XML-RPC,
           SQLite session support, c-ares DNS, and SFTP through libssh2.
         </p>
         <div class="chip-row">
@@ -42,11 +42,11 @@
         </div>
         <div class="mini-stat">
           <span class="mini-label">Source</span>
-          <strong><a href="https://github.com/ysway/openwrt-aria2" target="_blank" rel="noreferrer">ysway/openwrt-aria2</a></strong>
+          <strong><a href="https://github.com/ysway/openwrt-aria2-next" target="_blank" rel="noreferrer">ysway/openwrt-aria2-next</a></strong>
         </div>
         <div class="mini-stat">
           <span class="mini-label">Upstream</span>
-          <strong><a href="https://github.com/aria2/aria2" target="_blank" rel="noreferrer">aria2/aria2</a></strong>
+          <strong><a href="https://github.com/AnInsomniacy/aria2-next" target="_blank" rel="noreferrer">AnInsomniacy/aria2-next</a></strong>
         </div>
         <button id="toggle-theme" type="button">Dark</button>
       </aside>
@@ -63,7 +63,7 @@
       </article>
       <article class="quick-card">
         <h2>Audit Trail</h2>
-        <p>Each architecture directory also includes BUILDINFO and the raw aria2c binary for verification and manual deployment.</p>
+        <p>Each architecture directory also includes BUILDINFO and the raw aria2-next binary for verification and manual deployment.</p>
       </article>
     </section>
 
@@ -78,7 +78,7 @@
         <section class="notice">
           <h2>What this feed publishes</h2>
           <p>
-            Each target directory can contain a raw <code>aria2c</code> binary, <code>BUILDINFO</code>,
+            Each target directory can contain a raw <code>aria2-next</code> binary, <code>BUILDINFO</code>,
             an <code>.ipk</code> package for OPKG-based OpenWrt, and an <code>.apk</code> package for APK-based OpenWrt.
           </p>
           <p>
@@ -100,12 +100,12 @@
             <p>1. Detect the architecture that OpenWrt uses for package feeds:</p>
             <pre>opkg print-architecture | awk 'NF==3 && $3~/^[0-9]+$/ {print $2}' | tail -1</pre>
 
-            <p>2. Add the matching aria2 feed to your custom feeds file:</p>
-            <pre>echo "src/gz aria2-static https://ysway.github.io/openwrt-aria2/$(opkg print-architecture | awk 'NF==3 && $3~/^[0-9]+$/ {print $2}' | tail -1)" >> /etc/opkg/customfeeds.conf</pre>
+            <p>2. Add the matching aria2-next feed to your custom feeds file:</p>
+            <pre>echo "src/gz aria2-next-static https://ysway.github.io/openwrt-aria2-next/$(opkg print-architecture | awk 'NF==3 && $3~/^[0-9]+$/ {print $2}' | tail -1)" >> /etc/opkg/customfeeds.conf</pre>
 
             <p>3. Refresh package indexes and install:</p>
             <pre>opkg update
-opkg install aria2-static</pre>
+opkg install aria2-next-static</pre>
           </section>
         </section>
 
@@ -118,8 +118,8 @@ opkg install aria2-static</pre>
             <p>2. Open the matching architecture block in the Packages tab and copy the direct link to the published <code>.apk</code> file.</p>
 
             <p>3. Download and install it locally:</p>
-            <pre>wget -O /tmp/aria2-static.apk &lt;download-url-from-packages-tab&gt;
-apk add --allow-untrusted /tmp/aria2-static.apk</pre>
+            <pre>wget -O /tmp/aria2-next-static.apk &lt;download-url-from-packages-tab&gt;
+apk add --allow-untrusted /tmp/aria2-next-static.apk</pre>
 
             <p class="note">The <code>--allow-untrusted</code> flag is intentional here because this site publishes the package file itself rather than a signed APK repository.</p>
           </section>
@@ -127,24 +127,24 @@ apk add --allow-untrusted /tmp/aria2-static.apk</pre>
 
         <h2>Enable the service</h2>
         <section class="part">
-          <p>The package ships with <code>/etc/init.d/aria2</code> and <code>/etc/config/aria2</code>.</p>
+          <p>The package ships with <code>/etc/init.d/aria2-next</code> and <code>/etc/config/aria2-next</code>.</p>
           <p>
             Its UCI layout follows the OpenWrt project's <code>aria2</code> package, so existing
-            OpenWrt-style settings and multi-instance <code>config aria2</code> sections can be reused.
+            OpenWrt-style settings and multi-instance <code>config aria2</code> sections can be reused after copying them to <code>/etc/config/aria2-next</code>.
           </p>
-          <pre>uci set aria2.main.enabled='1'
-uci set aria2.main.dir='/mnt/data/downloads'
-uci commit aria2
-service aria2 start
-service aria2 enable</pre>
+          <pre>uci set aria2-next.main.enabled='1'
+uci set aria2-next.main.dir='/mnt/data/downloads'
+uci commit aria2-next
+service aria2-next start
+service aria2-next enable</pre>
         </section>
 
         <section class="tips">
           <h2>Default runtime behavior</h2>
           <ul>
             <li>RPC listens on port <code>6800</code>.</li>
-            <li>Downloads go to <code>/tmp/aria2/downloads</code> by default.</li>
-            <li>Rendered configs, session state, and DHT state live under <code>/var/etc/aria2</code>.</li>
+            <li>Downloads go to <code>/mnt/sda1/aria2-next</code> by default.</li>
+            <li>Rendered configs, session state, and DHT state live under <code>/var/etc/aria2-next</code>.</li>
             <li>BitTorrent Local Peer Discovery and DHT are enabled by default.</li>
           </ul>
         </section>
@@ -154,7 +154,7 @@ service aria2 enable</pre>
         <section class="important">
           <p>Pick the files that match your device architecture.</p>
           <p>Use <code>.ipk</code> for OpenWrt 24.10 and older. Use <code>.apk</code> for OpenWrt 25.12 and newer.</p>
-          <p>The raw <code>aria2c</code> binary and <code>BUILDINFO</code> file are published alongside the packages for manual deployment and verification.</p>
+          <p>The raw <code>aria2-next</code> binary and <code>BUILDINFO</code> file are published alongside the packages for manual deployment and verification.</p>
         </section>
 
         <!-- arch-section-anchor -->
@@ -166,7 +166,7 @@ service aria2 enable</pre>
         <section class="part">
           <h2>Build profile</h2>
           <p>
-            These packages are built against official OpenWrt SDK container images and link aria2 statically with OpenSSL,
+            These packages are built against official OpenWrt SDK container images and link aria2-next statically with OpenSSL,
             libssh2, c-ares, expat, SQLite, and zlib.
           </p>
         </section>
@@ -189,11 +189,11 @@ service aria2 enable</pre>
         <section class="part">
           <h2>Audit sources</h2>
           <ul>
-            <li><a href="https://github.com/ysway/openwrt-aria2" target="_blank" rel="noreferrer">Repository source and workflows</a></li>
+            <li><a href="https://github.com/ysway/openwrt-aria2-next" target="_blank" rel="noreferrer">Repository source and workflows</a></li>
             <li><a href="https://github.com/openwrt/packages/tree/master/net/aria2/files" target="_blank" rel="noreferrer">OpenWrt aria2 init/config reference</a></li>
-            <li><a href="https://github.com/ysway/openwrt-aria2/actions" target="_blank" rel="noreferrer">GitHub Actions build logs</a></li>
-            <li><a href="https://github.com/ysway/openwrt-aria2/releases" target="_blank" rel="noreferrer">Release artifacts</a></li>
-            <li><a href="https://github.com/aria2/aria2" target="_blank" rel="noreferrer">Upstream aria2 project</a></li>
+            <li><a href="https://github.com/ysway/openwrt-aria2-next/actions" target="_blank" rel="noreferrer">GitHub Actions build logs</a></li>
+            <li><a href="https://github.com/ysway/openwrt-aria2-next/releases" target="_blank" rel="noreferrer">Release artifacts</a></li>
+            <li><a href="https://github.com/AnInsomniacy/aria2-next" target="_blank" rel="noreferrer">Upstream aria2-next project</a></li>
           </ul>
         </section>
       </section>
@@ -202,7 +202,7 @@ service aria2 enable</pre>
     <footer class="footer">
       <p>
         Open source feed for OpenWrt, published on GitHub Pages from CI artifacts.
-        Source: <a href="https://github.com/ysway/openwrt-aria2" target="_blank" rel="noreferrer">ysway/openwrt-aria2</a>.
+        Source: <a href="https://github.com/ysway/openwrt-aria2-next" target="_blank" rel="noreferrer">ysway/openwrt-aria2-next</a>.
       </p>
     </footer>
   </div>

@@ -8,10 +8,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Default static prefix inside SDK container
 PREFIX="${PREFIX:-/work/static-prefix}"
 BUILDDIR="${BUILDDIR:-/work/build}"
-ARIA2_SRC="${REPO_ROOT}/aria2-builder"
+UPSTREAM_SUBMODULE="${UPSTREAM_SUBMODULE:-aria2-next}"
+BINARY_NAME="${BINARY_NAME:-aria2-next}"
+PKG_BASE_NAME="${PKG_BASE_NAME:-aria2-next-static}"
+PACKAGE_FILES_DIR="${PACKAGE_FILES_DIR:-$REPO_ROOT/package/$PKG_BASE_NAME/files}"
+ARIA2_SRC="${REPO_ROOT}/${UPSTREAM_SUBMODULE}"
 NPROC="$(nproc 2>/dev/null || echo 4)"
 
-export PREFIX BUILDDIR ARIA2_SRC NPROC
+export PREFIX BUILDDIR UPSTREAM_SUBMODULE BINARY_NAME PKG_BASE_NAME PACKAGE_FILES_DIR ARIA2_SRC NPROC
 
 log_info()  { echo "==> $*"; }
 log_warn()  { echo "WARNING: $*" >&2; }
@@ -92,7 +96,13 @@ extract_source() {
 
 get_aria2_version() {
     local ver
-    ver=$(grep '^AC_INIT' "$ARIA2_SRC/configure.ac" | sed -n 's/.*\[\([0-9][0-9.]*\)\].*/\1/p')
+    if [ -f "$ARIA2_SRC/CMakeLists.txt" ]; then
+        ver=$(sed -n 's/^[[:space:]]*VERSION[[:space:]]\+\([0-9][0-9.]*\).*/\1/p' "$ARIA2_SRC/CMakeLists.txt" | head -1)
+    elif [ -f "$ARIA2_SRC/configure.ac" ]; then
+        ver=$(grep '^AC_INIT' "$ARIA2_SRC/configure.ac" | sed -n 's/.*\[\([0-9][0-9.]*\)\].*/\1/p')
+    else
+        ver=""
+    fi
     if [ -z "$ver" ]; then
         ver="unknown"
     fi
@@ -100,5 +110,7 @@ get_aria2_version() {
 }
 
 get_submodule_commit() {
-    git -C "$REPO_ROOT" rev-parse HEAD:aria2-builder 2>/dev/null || echo "unknown"
+    git -C "$REPO_ROOT" rev-parse --verify "HEAD:$UPSTREAM_SUBMODULE" 2>/dev/null || \
+        git -C "$ARIA2_SRC" rev-parse HEAD 2>/dev/null || \
+        echo "unknown"
 }

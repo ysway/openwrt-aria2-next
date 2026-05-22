@@ -1,13 +1,14 @@
 #!/bin/bash
-# Build an .ipk package for the static aria2 build.
+# Build an .ipk package for the static aria2-next build.
 #
 # This creates an OpenWrt-compatible .ipk as a gzip-compressed tarball
 # containing debian-binary, data.tar.gz, and control.tar.gz. The structure
 # matches OpenWrt's ipkg-build script (see /builder/scripts/ipkg-build inside
 # the SDK image) so the result is installable with opkg on target devices.
 #
-# The default package name is `aria2-static` (with `Conflicts: aria2`) so it
-# does not collide with the official OpenWrt `aria2` package namespace.
+# The default package name is `aria2-next-static`. It installs `/usr/bin/aria2-next`
+# and `/etc/init.d/aria2-next`, so it can coexist with the official OpenWrt
+# `aria2` package unless callers explicitly set Conflicts/Replaces overrides.
 # Override via PKG_NAME_OVERRIDE / PKG_RELEASE_OVERRIDE / PKG_CONFLICTS_OVERRIDE
 # / PKG_REPLACES_OVERRIDE / PKG_PROVIDES_OVERRIDE to generate variants.
 #
@@ -32,7 +33,7 @@ if [ ! -f "$BINARY" ]; then
 fi
 
 ARIA2_VERSION="$(get_aria2_version)"
-PKG_NAME="${PKG_NAME_OVERRIDE:-aria2-static}"
+PKG_NAME="${PKG_NAME_OVERRIDE:-$PKG_BASE_NAME}"
 PKG_RELEASE="${PKG_RELEASE_OVERRIDE:-1}"
 PKG_VERSION="${ARIA2_VERSION}-${PKG_RELEASE}"
 PKG_ARCH="$PLATFORM"
@@ -40,13 +41,6 @@ PKG_CONFLICTS="${PKG_CONFLICTS_OVERRIDE:-}"
 PKG_REPLACES="${PKG_REPLACES_OVERRIDE:-}"
 PKG_PROVIDES="${PKG_PROVIDES_OVERRIDE:-}"
 
-# Default conflict: aria2-static replaces the stock aria2 package on opkg.
-# opkg's check_conflicts_for() blocks the install cleanly if aria2 is present,
-# prompting the user to `opkg remove aria2` first. With the gzip-tar IPK
-# format this no longer triggers the historical opkg crash on aria2-static.
-if [ -z "$PKG_CONFLICTS" ] && [ "$PKG_NAME" = "aria2-static" ]; then
-    PKG_CONFLICTS="aria2"
-fi
 WORKDIR="$(mktemp -d)"
 
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -60,17 +54,17 @@ mkdir -p "$DATA_DIR/etc/config"
 mkdir -p "$DATA_DIR/usr/share/doc/$PKG_NAME"
 mkdir -p "$PKG_DIR/CONTROL"
 
-cp "$BINARY" "$DATA_DIR/usr/bin/aria2c"
-chmod 755 "$DATA_DIR/usr/bin/aria2c"
+cp "$BINARY" "$DATA_DIR/usr/bin/$BINARY_NAME"
+chmod 755 "$DATA_DIR/usr/bin/$BINARY_NAME"
 
 # Install init script and config if available
-PACKAGE_FILES="$SCRIPT_DIR/../package/aria2-static/files"
-if [ -f "$PACKAGE_FILES/aria2.init" ]; then
-    cp "$PACKAGE_FILES/aria2.init" "$DATA_DIR/etc/init.d/aria2"
-    chmod 755 "$DATA_DIR/etc/init.d/aria2"
+PACKAGE_FILES="$PACKAGE_FILES_DIR"
+if [ -f "$PACKAGE_FILES/aria2-next.init" ]; then
+    cp "$PACKAGE_FILES/aria2-next.init" "$DATA_DIR/etc/init.d/aria2-next"
+    chmod 755 "$DATA_DIR/etc/init.d/aria2-next"
 fi
-if [ -f "$PACKAGE_FILES/aria2.conf" ]; then
-    cp "$PACKAGE_FILES/aria2.conf" "$DATA_DIR/etc/config/aria2"
+if [ -f "$PACKAGE_FILES/aria2-next.conf" ]; then
+    cp "$PACKAGE_FILES/aria2-next.conf" "$DATA_DIR/etc/config/aria2-next"
 fi
 
 # BUILDINFO
@@ -91,11 +85,11 @@ cat > "$CTRL_DIR/control" <<EOF
 Package: $PKG_NAME
 Version: $PKG_VERSION
 Architecture: $PKG_ARCH
-Maintainer: openwrt-aria2
-Description: aria2 download utility (statically linked)
- A lightweight multi-protocol & multi-source download utility with
- BitTorrent, Metalink, and HTTP/HTTPS/FTP/SFTP support. This package
- ships a statically linked binary with OpenSSL, libssh2, c-ares,
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with OpenSSL, libssh2, c-ares,
  expat, sqlite3, and zlib embedded.
 Installed-Size: $INSTALLED_SIZE
 Section: net
@@ -116,7 +110,7 @@ fi
 
 # conffiles
 cat > "$CTRL_DIR/conffiles" <<EOF
-/etc/config/aria2
+/etc/config/aria2-next
 EOF
 
 # Install postinst/prerm scripts (mirrors USERID:=aria2=6800:aria2=6800

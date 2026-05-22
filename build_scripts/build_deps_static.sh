@@ -44,7 +44,7 @@ resolve_target_binutils
 log_info "Downloading dependency sources..."
 download_source "$ZLIB_URL"    "$SRC_DIR/zlib-${ZLIB_VERSION}.tar.gz"
 download_source "$EXPAT_URL"   "$SRC_DIR/expat-${EXPAT_VERSION}.tar.bz2"
-download_source "$SQLITE_URL"  "$SRC_DIR/sqlite-autoconf-${SQLITE_VERSION}.tar.gz"
+download_source "$SQLITE_URL"  "$SRC_DIR/sqlite-autoconf-${SQLITE_AUTOCONF_VERSION}.tar.gz"
 download_source "$CARES_URL"   "$SRC_DIR/c-ares-${CARES_VERSION}.tar.gz"
 download_source "$LIBSSH2_URL" "$SRC_DIR/libssh2-${LIBSSH2_VERSION}.tar.bz2"
 download_source "$OPENSSL_URL" "$SRC_DIR/openssl-${OPENSSL_VERSION}.tar.gz"
@@ -76,9 +76,9 @@ make install
 # ── SQLite ──────────────────────────────────────────────────────────────────
 log_info "Building SQLite ${SQLITE_VERSION}"
 cd "$BUILDDIR"
-rm -rf "sqlite-autoconf-${SQLITE_VERSION}"
-extract_source "$SRC_DIR/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "$BUILDDIR"
-cd "sqlite-autoconf-${SQLITE_VERSION}"
+rm -rf "sqlite-autoconf-${SQLITE_AUTOCONF_VERSION}"
+extract_source "$SRC_DIR/sqlite-autoconf-${SQLITE_AUTOCONF_VERSION}.tar.gz" "$BUILDDIR"
+cd "sqlite-autoconf-${SQLITE_AUTOCONF_VERSION}"
 AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" NM="$TARGET_NM" \
 ./configure --host="$TARGET_HOST" --prefix="$PREFIX" \
     --disable-shared --enable-static \

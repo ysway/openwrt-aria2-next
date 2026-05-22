@@ -1,5 +1,5 @@
 #!/bin/sh
-# Post-install hook for aria2-static.
+# Post-install hook for aria2-next-static.
 #
 # Mirrors the USERID:=aria2=6800:aria2=6800 directive used by the official
 # OpenWrt aria2 package (net/aria2/Makefile). The init script can then run
@@ -31,9 +31,9 @@ add_group
 add_user
 
 # Enable but do not start the service. The user must configure
-# /etc/config/aria2 (set 'enabled 1' and a download 'dir') first.
-if [ -x /etc/init.d/aria2 ]; then
-    /etc/init.d/aria2 enable >/dev/null 2>&1 || true
+# /etc/config/aria2-next (set 'enabled 1' and a download 'dir') first.
+if [ -x /etc/init.d/aria2-next ]; then
+    /etc/init.d/aria2-next enable >/dev/null 2>&1 || true
 fi
 
 exit 0

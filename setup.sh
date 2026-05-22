@@ -1,18 +1,18 @@
 #!/bin/sh
-# Quick installer for the static aria2 build on OpenWrt.
+# Quick installer for the static aria2-next build on OpenWrt.
 #
 # Usage:
-#   wget -O- https://raw.githubusercontent.com/ysway/openwrt-aria2/master/setup.sh | sh
+#   wget -O- https://raw.githubusercontent.com/ysway/openwrt-aria2-next/master/setup.sh | sh
 #
 # Or download and run:
 #   sh setup.sh
 
 set -eu
 
-REPO="ysway/openwrt-aria2"
+REPO="ysway/openwrt-aria2-next"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 DOWNLOAD_BASE="https://github.com/${REPO}/releases/download"
-TMPDIR="$(mktemp -d /tmp/aria2.XXXXXX)"
+TMPDIR="$(mktemp -d /tmp/aria2-next.XXXXXX)"
 
 cleanup() {
     rm -rf "$TMPDIR"
@@ -66,29 +66,16 @@ download_asset() {
 }
 
 install_with_opkg() {
-    asset_name="aria2-static_${VERSION}_${ARCH}.ipk"
+    asset_name="aria2-next-static_${VERSION}_${ARCH}.ipk"
     pkg_path="$TMPDIR/$asset_name"
 
     download_asset "$asset_name" "$pkg_path"
-
-    # The aria2-static package declares `Conflicts: aria2`, so opkg refuses
-    # to install while the official aria2 package is present. Remove it
-    # first (configuration in /etc/config/aria2 is preserved by opkg's
-    # conffile handling).
-    if opkg list-installed 2>/dev/null | awk '{print $1}' | grep -qx 'aria2'; then
-        echo "Detected stock aria2 package; removing it to avoid conflict..."
-        opkg remove aria2 || {
-            echo "ERROR: Could not remove stock aria2; please remove manually" >&2
-            exit 1
-        }
-    fi
-
     echo "Installing ${asset_name} with opkg..."
     opkg install "$pkg_path"
 }
 
 install_with_apk() {
-    asset_name="aria2-static_${VERSION}_${ARCH}.apk"
+    asset_name="aria2-next-static_${VERSION}_${ARCH}.apk"
     pkg_path="$TMPDIR/$asset_name"
 
     download_asset "$asset_name" "$pkg_path"
@@ -97,12 +84,31 @@ install_with_apk() {
 }
 
 install_raw_binary() {
-    asset_name="aria2c_${VERSION}_${ARCH}"
+    asset_name="aria2-next_${VERSION}_${ARCH}"
     binary_path="$TMPDIR/$asset_name"
 
     download_asset "$asset_name" "$binary_path"
     echo "Installing raw binary fallback..."
-    install -m 0755 "$binary_path" /usr/bin/aria2c
+    install -m 0755 "$binary_path" /usr/bin/aria2-next
+}
+
+version_from_tag() {
+    tag="$1"
+    case "$tag" in
+        v*)
+            echo "${tag#v}"
+            ;;
+        aria2-next-*)
+            version="${tag#aria2-next-}"
+            case "$version" in
+                *-????????????) echo "${version%-????????????}" ;;
+                *) echo "$version" ;;
+            esac
+            ;;
+        *)
+            echo "$tag"
+            ;;
+    esac
 }
 
 LATEST_TAG="$(get_latest_tag)"
@@ -111,7 +117,7 @@ if [ -z "$LATEST_TAG" ]; then
     exit 1
 fi
 
-VERSION="${LATEST_TAG#v}"
+VERSION="$(version_from_tag "$LATEST_TAG")"
 ARCH="$(detect_arch)"
 
 echo "Latest release: $LATEST_TAG"
@@ -125,9 +131,9 @@ else
     install_raw_binary
 fi
 
-if /usr/bin/aria2c --version >/dev/null 2>&1; then
-    echo "aria2c installed successfully"
-    /usr/bin/aria2c --version | head -1
+if /usr/bin/aria2-next --version >/dev/null 2>&1; then
+    echo "aria2-next installed successfully"
+    /usr/bin/aria2-next --version | head -1
 else
-    echo "WARNING: aria2c installed but could not be verified" >&2
+    echo "WARNING: aria2-next installed but could not be verified" >&2
 fi

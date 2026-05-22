@@ -1,4 +1,4 @@
-name: Build aria2
+name: Build aria2-next
 
 on:
   workflow_dispatch:
@@ -8,15 +8,15 @@ on:
         required: false
         default: '24.10.4'
   repository_dispatch:
-    types: [build-aria2]
+    types: [build-aria2-next]
 
 permissions:
   contents: read
 
 env:
-  SOFTWARE_NAME: "aria2"
+  SOFTWARE_NAME: "aria2-next"
   REPO_OWNER: "ysway"
-  REPO_NAME: "openwrt-aria2"
+  REPO_NAME: "openwrt-aria2-next"
   ARTIFACT_DIR: "artifacts"
   OPENWRT_IPK_SDK: "24.10.4"
   OPENWRT_APK_SDK: "25.12.0"
@@ -77,13 +77,13 @@ jobs:
           submodules: true
           path: repo
 
-      - name: Get aria2 Version
+      - name: Get aria2-next Version
         id: get_version
         run: |
-          VERSION=$(grep '^AC_INIT' repo/aria2-builder/configure.ac \
-            | sed -n 's/.*\[\([0-9][0-9.]*\)\].*/\1/p')
+          VERSION=$(sed -n 's/^[[:space:]]*VERSION[[:space:]]\+\([0-9][0-9.]*\).*/\1/p' \
+            repo/aria2-next/CMakeLists.txt | head -1)
           echo "version=${VERSION:-unknown}" >> "$GITHUB_OUTPUT"
-          echo "Detected aria2 version: $VERSION"
+          echo "Detected aria2-next version: $VERSION"
 
       - name: Set Build Timestamp
         id: get_date
@@ -113,7 +113,7 @@ jobs:
           echo "Pulling ghcr.io/openwrt/sdk:${SDK_TAG}"
           docker pull "ghcr.io/openwrt/sdk:${SDK_TAG}"
 
-      - name: Build aria2 in SDK Container
+      - name: Build aria2-next in SDK Container
         run: |
           docker run --rm --user root \
             -v "$(pwd)/repo:/work/repo:z" \
@@ -141,7 +141,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: aria2-static-${{ matrix.platform }}
+          name: aria2-next-static-${{ matrix.platform }}
           path: ${{ env.ARTIFACT_DIR }}/${{ matrix.platform }}/
           if-no-files-found: error
           retention-days: 30
@@ -183,11 +183,11 @@ jobs:
           cp -r ../repo/feed_template/* ./
           touch .nojekyll
 
-          # Copy artifacts (strip aria2-static- prefix for clean directory names)
+          # Copy artifacts (strip aria2-next-static- prefix for clean directory names)
           for dir in ../${{ env.ARTIFACT_DIR }}/*/; do
             [ -d "$dir" ] || continue
             name=$(basename "$dir")
-            platform="${name#aria2-static-}"
+            platform="${name#aria2-next-static-}"
             mkdir -p "$platform"
             cp -r "$dir"/* "$platform/" 2>/dev/null || true
           done
@@ -237,7 +237,7 @@ jobs:
                 file=$(basename "$file_path")
 
                 case "$file" in
-                  *.ipk|*.apk|aria2c|BUILDINFO|Packages|Packages.gz|Packages.sig|packages.adb)
+                  *.ipk|*.apk|aria2-next|BUILDINFO|Packages|Packages.gz|Packages.sig|packages.adb)
                     ;;
                   *)
                     continue
@@ -315,16 +315,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          git -C repo/aria2-builder fetch --force --tags origin
-          RELEASE_TAG=$(git -C repo/aria2-builder describe --tags --exact-match HEAD 2>/dev/null || true)
+          git -C repo/aria2-next fetch --force --tags origin
+          RELEASE_TAG=$(git -C repo/aria2-next describe --tags --exact-match HEAD 2>/dev/null || true)
 
           if [ -z "$RELEASE_TAG" ]; then
             RELEASE_TAG='${{ github.event.client_payload.tag }}'
           fi
 
           if [ -z "$RELEASE_TAG" ]; then
-            echo "ERROR: Could not determine upstream aria2-builder release tag" >&2
-            exit 1
+            SUBMODULE_SHA=$(git -C repo/aria2-next rev-parse --short=12 HEAD)
+            RELEASE_TAG="aria2-next-${{ env.RELEASE_VERSION }}-${SUBMODULE_SHA}"
           fi
 
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
@@ -339,7 +339,7 @@ jobs:
           for arch_dir in "${{ env.ARTIFACT_DIR }}"/*/; do
             [ -d "$arch_dir" ] || continue
             arch=$(basename "$arch_dir")
-            platform="${arch#aria2-static-}"
+            platform="${arch#aria2-next-static-}"
 
             for ipk in "$arch_dir"/*.ipk; do
               [ -f "$ipk" ] || continue
@@ -354,23 +354,23 @@ jobs:
           for arch_dir in "${{ env.ARTIFACT_DIR }}"/*/; do
             [ -d "$arch_dir" ] || continue
             arch=$(basename "$arch_dir")
-            platform="${arch#aria2-static-}"
+            platform="${arch#aria2-next-static-}"
 
             for apk in "$arch_dir"/*.apk; do
               [ -f "$apk" ] || continue
-              new_name="aria2-static_${{ env.RELEASE_VERSION }}_${platform}.apk"
+              new_name="aria2-next-static_${{ env.RELEASE_VERSION }}_${platform}.apk"
               mv "$apk" "$arch_dir/$new_name" 2>/dev/null || true
             done
           done
 
-          # Rename raw binaries too, otherwise every upload collides on the same aria2c asset name.
+          # Rename raw binaries too, otherwise every upload collides on the same aria2-next asset name.
           for arch_dir in "${{ env.ARTIFACT_DIR }}"/*/; do
             [ -d "$arch_dir" ] || continue
             arch=$(basename "$arch_dir")
-            platform="${arch#aria2-static-}"
+            platform="${arch#aria2-next-static-}"
 
-            if [ -f "$arch_dir/aria2c" ]; then
-              mv "$arch_dir/aria2c" "$arch_dir/aria2c_${{ env.RELEASE_VERSION }}_${platform}" 2>/dev/null || true
+            if [ -f "$arch_dir/aria2-next" ]; then
+              mv "$arch_dir/aria2-next" "$arch_dir/aria2-next_${{ env.RELEASE_VERSION }}_${platform}" 2>/dev/null || true
             fi
           done
 
@@ -381,26 +381,26 @@ jobs:
           for arch_dir in "${{ env.ARTIFACT_DIR }}"/*/; do
             [ -d "$arch_dir" ] || continue
             arch=$(basename "$arch_dir")
-            platform="${arch#aria2-static-}"
+            platform="${arch#aria2-next-static-}"
 
             ipk_file=$(ls "$arch_dir"/*.ipk 2>/dev/null | head -1 | xargs -n1 basename 2>/dev/null || echo "none")
             apk_file=$(ls "$arch_dir"/*.apk 2>/dev/null | head -1 | xargs -n1 basename 2>/dev/null || echo "none")
-            bin_file=$(ls "$arch_dir"/aria2c_* 2>/dev/null | head -1 | xargs -n1 basename 2>/dev/null || echo "none")
+            bin_file=$(ls "$arch_dir"/aria2-next_* 2>/dev/null | head -1 | xargs -n1 basename 2>/dev/null || echo "none")
 
             if [ "$ipk_file" != "none" ]; then
-              ipk_link="[${ipk_file}](https://github.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/releases/download/${RELEASE_TAG}/${ipk_file})"
+              ipk_link="[${ipk_file}](${{ github.server_url }}/${{ github.repository }}/releases/download/${RELEASE_TAG}/${ipk_file})"
             else
               ipk_link="N/A"
             fi
 
             if [ "$apk_file" != "none" ]; then
-              apk_link="[${apk_file}](https://github.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/releases/download/${RELEASE_TAG}/${apk_file})"
+              apk_link="[${apk_file}](${{ github.server_url }}/${{ github.repository }}/releases/download/${RELEASE_TAG}/${apk_file})"
             else
               apk_link="N/A"
             fi
 
             if [ "$bin_file" != "none" ]; then
-              bin_link="[${bin_file}](https://github.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/releases/download/${RELEASE_TAG}/${bin_file})"
+              bin_link="[${bin_file}](${{ github.server_url }}/${{ github.repository }}/releases/download/${RELEASE_TAG}/${bin_file})"
             else
               bin_link="N/A"
             fi
@@ -410,12 +410,12 @@ jobs:
 
           full_table="${table}${rows}"
 
-          release_body="## Static aria2 for OpenWrt
+          release_body="## Static aria2-next for OpenWrt
           #### Version: ${RELEASE_TAG}
           #### Build Date: ${{ env.BUILD_DATE }}
           ---
 
-          Statically linked aria2 build for OpenWrt using official SDK.
+          Statically linked aria2-next build for OpenWrt using official SDK.
           - Compiled with official OpenWrt SDK.
           - UPX compression applied where supported.
           - Standard IPK, APK, and raw binary assets for direct installation.
@@ -444,9 +444,9 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.get_release_tag.outputs.tag }}
-          name: "aria2-static ${{ env.RELEASE_VERSION }} (OpenWrt)"
+          name: "aria2-next-static ${{ env.RELEASE_VERSION }} (OpenWrt)"
           body: ${{ steps.prepare_release.outputs.release_body }}
           files: |
             ${{ env.ARTIFACT_DIR }}/**/*.ipk
             ${{ env.ARTIFACT_DIR }}/**/*.apk
-            ${{ env.ARTIFACT_DIR }}/**/aria2c_*
+            ${{ env.ARTIFACT_DIR }}/**/aria2-next_*

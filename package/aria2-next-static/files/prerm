@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-removal hook for aria2-static.
+# Pre-removal hook for aria2-next-static.
 #
 # Stop and disable the service before files are removed. The 'aria2'
 # system user/group is intentionally left in place to match upstream
@@ -7,9 +7,9 @@
 
 [ -n "${IPKG_INSTROOT-}" ] && exit 0
 
-if [ -x /etc/init.d/aria2 ]; then
-    /etc/init.d/aria2 stop    >/dev/null 2>&1 || true
-    /etc/init.d/aria2 disable >/dev/null 2>&1 || true
+if [ -x /etc/init.d/aria2-next ]; then
+    /etc/init.d/aria2-next stop    >/dev/null 2>&1 || true
+    /etc/init.d/aria2-next disable >/dev/null 2>&1 || true
 fi
 
 exit 0

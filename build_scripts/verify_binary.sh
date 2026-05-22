@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verify the built aria2c binary: linkage check + functional check.
+# Verify the built aria2-next binary: linkage check + functional check.
 #
 # Exits non-zero if the binary fails critical checks.
 # Sets FULLY_STATIC=yes/no as an output variable.
@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-BINARY="${1:-$ARIA2_SRC/src/aria2c}"
+BINARY="${1:-$BUILDDIR/aria2-next-build/$BINARY_NAME}"
 
 if [ ! -f "$BINARY" ]; then
     log_fatal "Binary not found: $BINARY"
@@ -59,17 +59,17 @@ ldd "$BINARY" 2>&1 || true
 # ── Functional check ───────────────────────────────────────────────────────
 log_info "Functional check: --version"
 if "$BINARY" --version 2>/dev/null; then
-    log_info "aria2c --version succeeded"
+    log_info "$BINARY_NAME --version succeeded"
 else
     # Cross-compiled binary may not run on build host; that's OK
-    log_warn "aria2c --version did not execute (expected for cross builds)"
+    log_warn "$BINARY_NAME --version did not execute (expected for cross builds)"
 fi
 
 log_info "Functional check: --help"
 if "$BINARY" --help >/dev/null 2>&1; then
-    log_info "aria2c --help succeeded"
+    log_info "$BINARY_NAME --help succeeded"
 else
-    log_warn "aria2c --help did not execute (expected for cross builds)"
+    log_warn "$BINARY_NAME --help did not execute (expected for cross builds)"
 fi
 
 export FULLY_STATIC

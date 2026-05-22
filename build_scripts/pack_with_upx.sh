@@ -1,18 +1,18 @@
 #!/bin/bash
-# Compress aria2c with UPX if the target supports it.
+# Compress aria2-next with UPX if the target supports it.
 #
 # Uses the UPX_SKIP variable (set by target-map.sh) to decide whether to skip.
 # Always keeps a backup; restores on failure.
 #
 # Usage:
-#   bash pack_with_upx.sh /path/to/aria2c
+#   bash pack_with_upx.sh /path/to/aria2-next
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-BINARY="${1:-$ARIA2_SRC/src/aria2c}"
+BINARY="${1:-$BUILDDIR/aria2-next-build/$BINARY_NAME}"
 
 if [ ! -f "$BINARY" ]; then
     log_fatal "Binary not found: $BINARY"

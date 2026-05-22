@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   sync:
-    name: Check for upstream aria2-builder releases
+    name: Check for upstream aria2-next updates
     # Git-only automation job; no Docker or privileged build steps required.
     runs-on: ubuntu-slim
     steps:
@@ -23,69 +23,64 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update submodule to latest tagged release
+      - name: Update submodule to latest upstream release tag
         id: update
         run: |
           set -euo pipefail
-          OLD_SHA=$(git rev-parse HEAD:aria2-builder)
-          OLD_TAG=$(git -C aria2-builder describe --tags --exact-match HEAD 2>/dev/null || echo "detached-${OLD_SHA}")
+          OLD_SHA=$(git rev-parse --verify HEAD:aria2-next 2>/dev/null || git -C aria2-next rev-parse HEAD)
+          OLD_REF=$(git -C aria2-next describe --tags --exact-match HEAD 2>/dev/null || echo "untagged-${OLD_SHA:0:12}")
 
-          git -C aria2-builder fetch --force --tags origin
-          NEW_TAG=$(git -C aria2-builder tag --sort=-v:refname | head -1)
+          git -C aria2-next fetch --force --tags origin
+          LATEST_TAG=$(git -C aria2-next tag --list 'v*' --sort=-version:refname | head -n 1)
 
-          if [ -z "$NEW_TAG" ]; then
-            echo "ERROR: Could not determine the latest aria2-builder release tag" >&2
+          if [ -z "$LATEST_TAG" ]; then
+            echo "ERROR: Could not determine latest aria2-next release tag" >&2
             exit 1
           fi
 
-          git -C aria2-builder checkout --detach "$NEW_TAG"
-          NEW_SHA=$(git -C aria2-builder rev-parse HEAD)
-
-          git add aria2-builder
-
-          echo "old_sha=$OLD_SHA" >> "$GITHUB_OUTPUT"
-          echo "old_tag=$OLD_TAG" >> "$GITHUB_OUTPUT"
-          echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
-          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
-
-          if git diff --cached --quiet -- aria2-builder; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "aria2-builder already pinned to latest tagged release: $NEW_TAG"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "aria2-builder updated: $OLD_TAG ($OLD_SHA) -> $NEW_TAG ($NEW_SHA)"
+          if ! git -C aria2-next rev-parse --verify "${LATEST_TAG}^{commit}" >/dev/null; then
+            echo "ERROR: Could not resolve aria2-next tag: $LATEST_TAG" >&2
+            exit 1
           fi
 
-      - name: Sync dependency versions from upstream Linux x86_64 build
+          git -C aria2-next checkout --detach "$LATEST_TAG"
+          NEW_SHA=$(git -C aria2-next rev-parse HEAD)
+          NEW_REF=$(git -C aria2-next describe --tags --exact-match HEAD 2>/dev/null || echo "$LATEST_TAG")
+
+          git add aria2-next
+
+          echo "old_sha=$OLD_SHA" >> "$GITHUB_OUTPUT"
+          echo "old_tag=$OLD_REF" >> "$GITHUB_OUTPUT"
+          echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
+          echo "new_tag=$NEW_REF" >> "$GITHUB_OUTPUT"
+
+          if git diff --cached --quiet -- aria2-next; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "aria2-next already pinned to latest upstream release tag: $NEW_REF"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "aria2-next updated: $OLD_REF ($OLD_SHA) -> $NEW_REF ($NEW_SHA)"
+          fi
+
+      - name: Sync dependency versions from upstream baseline
         if: steps.update.outputs.changed == 'true'
         run: |
           set -euo pipefail
 
-          UPSTREAM_WORKFLOW="aria2-builder/.github/workflows/release.yml"
+          UPSTREAM_DEPS="aria2-next/packaging/dependencies.env"
           TARGET_FILE="build_scripts/versions.sh"
 
-          if [ ! -f "$UPSTREAM_WORKFLOW" ]; then
-            echo "ERROR: Missing upstream workflow file: $UPSTREAM_WORKFLOW" >&2
+          if [ ! -f "$UPSTREAM_DEPS" ]; then
+            echo "ERROR: Missing upstream dependency file: $UPSTREAM_DEPS" >&2
             exit 1
           fi
 
-          extract_from_linux_x64() {
-            pattern="$1"
-            sed -n '/^  build-linux-x64:/,/^  build-linux-arm64:/p' "$UPSTREAM_WORKFLOW" \
-              | sed -n "s#.*${pattern}#\\1#p" \
-              | head -1
-          }
+          # shellcheck source=/dev/null
+          . "$UPSTREAM_DEPS"
 
-          ZLIB_VERSION=$(extract_from_linux_x64 'zlib/releases/download/v\([0-9.][0-9.]*\)/zlib-.*')
-          EXPAT_VERSION=$(extract_from_linux_x64 'libexpat/releases/download/R_[0-9_][0-9_]*\/expat-\([0-9.][0-9.]*\)\.tar.*')
-          SQLITE_VERSION=$(extract_from_linux_x64 'sqlite-autoconf-\([0-9][0-9]*\)\.tar\.gz')
-          CARES_VERSION=$(extract_from_linux_x64 'c-ares/releases/download/cares-[0-9_][0-9_]*\/c-ares-\([0-9.][0-9.]*\)\.tar\.gz')
-          LIBSSH2_VERSION=$(extract_from_linux_x64 'libssh2/releases/download/libssh2-\([0-9.][0-9.]*\)/libssh2-.*')
-          OPENSSL_VERSION=$(extract_from_linux_x64 'openssl/releases/download/openssl-\([0-9.][0-9.]*\)/openssl-.*')
-
-          for version_var in ZLIB_VERSION EXPAT_VERSION SQLITE_VERSION CARES_VERSION LIBSSH2_VERSION OPENSSL_VERSION; do
+          for version_var in ZLIB_VERSION EXPAT_VERSION SQLITE_VERSION SQLITE_AUTOCONF_VERSION SQLITE_YEAR CARES_VERSION LIBSSH2_VERSION OPENSSL_VERSION; do
             if [ -z "$(eval "printf '%s' \"\${$version_var}\"")" ]; then
-              echo "ERROR: Failed to extract $version_var from $UPSTREAM_WORKFLOW" >&2
+              echo "ERROR: Failed to extract $version_var from $UPSTREAM_DEPS" >&2
               exit 1
             fi
           done
@@ -93,12 +88,14 @@ jobs:
           sed -i "s/^ZLIB_VERSION=.*/ZLIB_VERSION=\"${ZLIB_VERSION}\"/" "$TARGET_FILE"
           sed -i "s/^EXPAT_VERSION=.*/EXPAT_VERSION=\"${EXPAT_VERSION}\"/" "$TARGET_FILE"
           sed -i "s/^SQLITE_VERSION=.*/SQLITE_VERSION=\"${SQLITE_VERSION}\"/" "$TARGET_FILE"
+          sed -i "s/^SQLITE_AUTOCONF_VERSION=.*/SQLITE_AUTOCONF_VERSION=\"${SQLITE_AUTOCONF_VERSION}\"/" "$TARGET_FILE"
+          sed -i "s/^SQLITE_YEAR=.*/SQLITE_YEAR=\"${SQLITE_YEAR}\"/" "$TARGET_FILE"
           sed -i "s/^CARES_VERSION=.*/CARES_VERSION=\"${CARES_VERSION}\"/" "$TARGET_FILE"
           sed -i "s/^LIBSSH2_VERSION=.*/LIBSSH2_VERSION=\"${LIBSSH2_VERSION}\"/" "$TARGET_FILE"
           sed -i "s/^OPENSSL_VERSION=.*/OPENSSL_VERSION=\"${OPENSSL_VERSION}\"/" "$TARGET_FILE"
 
           git add "$TARGET_FILE"
-          echo "Synchronized $TARGET_FILE from upstream build-linux-x64 dependency versions"
+          echo "Synchronized $TARGET_FILE from upstream dependency baseline"
 
       - name: Commit updated gitlink
         if: steps.update.outputs.changed == 'true'
@@ -106,7 +103,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: update aria2-builder submodule to ${{ steps.update.outputs.new_tag }}"
+          git commit -m "chore: update aria2-next submodule to ${{ steps.update.outputs.new_tag }}"
           git push origin HEAD:${{ github.event.repository.default_branch }}
 
       - name: Trigger build workflow
@@ -119,7 +116,7 @@ jobs:
             await github.rest.repos.createDispatchEvent({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              event_type: 'build-aria2',
+              event_type: 'build-aria2-next',
               client_payload: {
                 tag: '${{ steps.update.outputs.new_tag }}',
                 sha: '${{ steps.update.outputs.new_sha }}'

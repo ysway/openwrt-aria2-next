@@ -1,5 +1,5 @@
 #!/bin/bash
-# Entrypoint script for building aria2 inside the OpenWrt SDK container.
+# Entrypoint script for building aria2-next inside the OpenWrt SDK container.
 #
 # This script is executed via:
 #   docker run --rm --user root \
@@ -11,7 +11,7 @@
 #     bash /work/repo/build_scripts/build_in_sdk.sh <platform>
 #
 # Expects:
-#   /work/repo    - mounted repo with aria2-builder submodule
+#   /work/repo    - mounted repo with aria2-next submodule
 #   /work/output  - mounted output directory for artifacts
 #   /builder      - SDK_HOME (pre-existing in the SDK container image)
 
@@ -22,14 +22,22 @@ PLATFORM="${1:?Usage: build_in_sdk.sh <platform>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-log_info "=== Building aria2 for $PLATFORM ==="
+log_info "=== Building aria2-next for $PLATFORM ==="
+
+if command -v git >/dev/null 2>&1; then
+    git config --global --add safe.directory "$REPO_ROOT"
+    git config --global --add safe.directory "$ARIA2_SRC"
+fi
 
 # ── Install host build tools ───────────────────────────────────────────────
 log_info "Installing host build tools..."
 apt-get update -qq
 apt-get install -y --no-install-recommends \
     autoconf automake autotools-dev autopoint libtool pkg-config \
-    gettext curl file bzip2 xz-utils upx-ucl ca-certificates binutils
+    gettext curl file bzip2 xz-utils upx-ucl ca-certificates binutils \
+    python3 python3-pip
+
+python3 -m pip install --no-cache-dir 'cmake>=3.25,<4' 'ninja>=1.11'
 
 # ── Set up SDK toolchain ──────────────────────────────────────────────────
 SDK_HOME="${SDK_HOME:-/builder}"
@@ -64,11 +72,13 @@ mkdir -p "$PREFIX" "$BUILDDIR"
 log_info "Building static dependencies..."
 bash "$SCRIPT_DIR/build_deps_static.sh"
 
-# ── Build aria2 ────────────────────────────────────────────────────────────
-log_info "Building aria2..."
-bash "$SCRIPT_DIR/build_static_aria2.sh"
+# ── Build aria2-next ───────────────────────────────────────────────────────
+log_info "Building aria2-next..."
+BUILD_LOG="/tmp/aria2-next-build.log"
+bash "$SCRIPT_DIR/build_static_aria2.sh" 2>&1 | tee "$BUILD_LOG"
 
-BINARY="$ARIA2_SRC/src/aria2c"
+BINARY=$(awk -F= '/^BINARY=/{value=$2} END{print value}' "$BUILD_LOG")
+BINARY="${BINARY:-$BUILDDIR/aria2-next-build/$BINARY_NAME}"
 
 # ── Verify binary ──────────────────────────────────────────────────────────
 log_info "Verifying binary..."

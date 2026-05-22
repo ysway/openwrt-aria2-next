@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build an .apk package for aria2-static (OpenWrt 25.12+ APK format).
+# Build an .apk package for aria2-next-static (OpenWrt 25.12+ APK format).
 #
 # APK v2 format: concatenation of gzipped tar segments:
 #   1. Control segment: .PKGINFO (and optional scripts)
@@ -24,7 +24,7 @@ if [ ! -f "$BINARY" ]; then
 fi
 
 ARIA2_VERSION="$(get_aria2_version)"
-PKG_NAME="aria2-static"
+PKG_NAME="$PKG_BASE_NAME"
 PKG_VERSION="${ARIA2_VERSION}-r1"
 PKG_ARCH="$PLATFORM"
 WORKDIR="$(mktemp -d)"
@@ -38,16 +38,16 @@ mkdir -p "$DATA_DIR/etc/init.d"
 mkdir -p "$DATA_DIR/etc/config"
 mkdir -p "$DATA_DIR/usr/share/doc/$PKG_NAME"
 
-cp "$BINARY" "$DATA_DIR/usr/bin/aria2c"
-chmod 755 "$DATA_DIR/usr/bin/aria2c"
+cp "$BINARY" "$DATA_DIR/usr/bin/$BINARY_NAME"
+chmod 755 "$DATA_DIR/usr/bin/$BINARY_NAME"
 
-PACKAGE_FILES="$SCRIPT_DIR/../package/aria2-static/files"
-if [ -f "$PACKAGE_FILES/aria2.init" ]; then
-    cp "$PACKAGE_FILES/aria2.init" "$DATA_DIR/etc/init.d/aria2"
-    chmod 755 "$DATA_DIR/etc/init.d/aria2"
+PACKAGE_FILES="$PACKAGE_FILES_DIR"
+if [ -f "$PACKAGE_FILES/aria2-next.init" ]; then
+    cp "$PACKAGE_FILES/aria2-next.init" "$DATA_DIR/etc/init.d/aria2-next"
+    chmod 755 "$DATA_DIR/etc/init.d/aria2-next"
 fi
-if [ -f "$PACKAGE_FILES/aria2.conf" ]; then
-    cp "$PACKAGE_FILES/aria2.conf" "$DATA_DIR/etc/config/aria2"
+if [ -f "$PACKAGE_FILES/aria2-next.conf" ]; then
+    cp "$PACKAGE_FILES/aria2-next.conf" "$DATA_DIR/etc/config/aria2-next"
 fi
 
 if [ -f "$OUTPUT_DIR/BUILDINFO" ]; then
@@ -61,17 +61,30 @@ INSTALLED_SIZE=$((INSTALLED_SIZE * 1024))
 cat > "$WORKDIR/.PKGINFO" <<EOF
 pkgname = $PKG_NAME
 pkgver = $PKG_VERSION
-pkgdesc = aria2 download utility (statically linked)
-url = https://aria2.github.io/
+pkgdesc = aria2-next download utility (statically linked)
+url = https://github.com/AnInsomniacy/aria2-next
 size = $INSTALLED_SIZE
 arch = $PKG_ARCH
 license = GPL-2.0-or-later
 origin = $PKG_NAME
-maintainer = openwrt-aria2
+maintainer = openwrt-aria2-next
+backup = etc/config/aria2-next
 EOF
 
+if [ -f "$PACKAGE_FILES/postinst" ]; then
+    cp "$PACKAGE_FILES/postinst" "$WORKDIR/.post-install"
+    chmod 755 "$WORKDIR/.post-install"
+fi
+if [ -f "$PACKAGE_FILES/prerm" ]; then
+    cp "$PACKAGE_FILES/prerm" "$WORKDIR/.pre-deinstall"
+    chmod 755 "$WORKDIR/.pre-deinstall"
+fi
+
 # ── Build control segment ──────────────────────────────────────────────────
-tar -czf "$WORKDIR/control.tar.gz" -C "$WORKDIR" .PKGINFO
+control_files=(.PKGINFO)
+[ -f "$WORKDIR/.post-install" ] && control_files+=(.post-install)
+[ -f "$WORKDIR/.pre-deinstall" ] && control_files+=(.pre-deinstall)
+tar -czf "$WORKDIR/control.tar.gz" -C "$WORKDIR" "${control_files[@]}"
 
 # ── Build data segment ─────────────────────────────────────────────────────
 tar -czf "$WORKDIR/data.tar.gz" -C "$DATA_DIR" .

@@ -2,11 +2,10 @@
 # Copyright (C) 2016-2017 Hsing-wang Liao <kuoruan@gmail.com>
 # Licensed to the public under the Apache License 2.0.
 #
-# Drop-in compatible with the official OpenWrt net/aria2 init script
-# (openwrt/packages, branches openwrt-24.10 and openwrt-25.12 — both
-# identical). The body below is a verbatim copy of upstream so any
-# /etc/config/aria2 file that works with the official package works
-# unchanged with this static build.
+# Adapted from the official OpenWrt net/aria2 init script (openwrt/packages,
+# branches openwrt-24.10 and openwrt-25.12 — both identical). The UCI schema
+# remains compatible with upstream aria2 configs; copy /etc/config/aria2 to
+# /etc/config/aria2-next to reuse an existing configuration with aria2-next.
 #
 # Two small additions for legacy aria2-static deployments:
 #   - 'download_dir' is accepted as a synonym for 'dir'.
@@ -21,8 +20,8 @@
 START=99
 USE_PROCD=1
 
-NAME=aria2
-PROG=/usr/bin/aria2c
+NAME=aria2-next
+PROG=/usr/bin/aria2-next
 
 _info() {
 	logger -p daemon.info -t "$NAME" "$*"
@@ -103,7 +102,7 @@ aria2_validate() {
 		'enabled:bool:0' \
 		'enable_logging:bool' \
 		'enable_proxy:bool' \
-		'config_dir:string:/var/etc/aria2' \
+		'config_dir:string:/var/etc/aria2-next' \
 		'user:string' \
 		'all_proxy:string' \
 		'all_proxy_passwd:string' \

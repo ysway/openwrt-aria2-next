@@ -24,7 +24,7 @@ FULLY_STATIC="${FULLY_STATIC:-unknown}"
 UPX_APPLIED="${UPX_APPLIED:-no}"
 
 # Copy binary
-cp "$BINARY" "$OUTPUT_DIR/aria2c"
+cp "$BINARY" "$OUTPUT_DIR/$BINARY_NAME"
 
 # Generate BUILDINFO
 cat > "$OUTPUT_DIR/BUILDINFO" <<EOF

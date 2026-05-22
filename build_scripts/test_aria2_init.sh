@@ -1,5 +1,5 @@
 #!/bin/sh
-# Smoke test: source aria2.init under stub procd/uci shims and exercise
+# Smoke test: source aria2-next.init under stub procd/uci shims and exercise
 # the start_service / aria2_start code path for several config states.
 #
 # NOTE: real OpenWrt init scripts run without `set -u`. We deliberately
@@ -13,7 +13,7 @@
 #   4. enabled=1, dir present → reaches procd_close_instance (success path)
 #   5. legacy aria2-static keys (download_dir, dht_enable) → mapped
 
-INIT="$(cd "$(dirname "$0")/../package/aria2-static/files" && pwd)/aria2.init"
+INIT="$(cd "$(dirname "$0")/../package/aria2-next-static/files" && pwd)/aria2-next.init"
 [ -f "$INIT" ] || { echo "init not found: $INIT" >&2; exit 1; }
 
 WORK="$(mktemp -d)"

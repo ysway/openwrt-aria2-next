@@ -1,11 +1,11 @@
 #!/bin/bash
-# Build aria2c as a static binary using the pre-built static dependencies.
+# Build aria2-next as a static binary using the pre-built static dependencies.
 #
 # Expects:
 #   - SDK toolchain on PATH
 #   - TARGET_HOST set
 #   - PREFIX set and populated by build_deps_static.sh
-#   - ARIA2_SRC pointing to the aria2-builder submodule
+#   - ARIA2_SRC pointing to the aria2-next submodule
 
 set -euo pipefail
 
@@ -16,10 +16,12 @@ if [ -z "${TARGET_HOST:-}" ]; then
     log_fatal "TARGET_HOST is not set; source target-map.sh and call resolve_target first"
 fi
 
-log_info "Building aria2 from $ARIA2_SRC for $TARGET_HOST"
+log_info "Building aria2-next from $ARIA2_SRC for $TARGET_HOST"
 
 EXTRA_LIBS_ARRAY=()
 EXTRA_LIBS_STRING=""
+STANDARD_LIBS_ARRAY=()
+STANDARD_LIBS_STRING=""
 
 if [ -n "${EXTRA_LIBS:-}" ]; then
     read -r -a extra_libs_raw <<< "$EXTRA_LIBS"
@@ -29,64 +31,99 @@ fi
 
 resolve_target_binutils
 
-find_config_helper() {
-    local helper_name="${1:?helper name required}"
-    local helper_path=""
-
-    if [ -n "${STAGING_DIR:-}" ] && [ -d "$STAGING_DIR/host/share" ]; then
-        helper_path=$(find "$STAGING_DIR/host/share" \( -path "*/automake-*/$helper_name" -o -path "*/misc/$helper_name" \) 2>/dev/null | sort | head -1)
+STANDARD_LIBS_ARRAY=("${EXTRA_LIBS_ARRAY[@]}")
+for compiler_archive in libgcc_eh.a libgcc.a; do
+    archive_path=$("${TARGET_HOST}-g++" -print-file-name="$compiler_archive" 2>/dev/null || true)
+    if [ -n "$archive_path" ] && [ "$archive_path" != "$compiler_archive" ] && [ -f "$archive_path" ]; then
+        STANDARD_LIBS_ARRAY+=("$archive_path")
     fi
+done
+STANDARD_LIBS_STRING="${STANDARD_LIBS_ARRAY[*]}"
 
-    if [ -z "$helper_path" ]; then
-        helper_path=$(find /usr/share \( -path "*/automake-*/$helper_name" -o -path "*/misc/$helper_name" \) 2>/dev/null | sort | head -1)
+BUILD_DIR="$BUILDDIR/aria2-next-build"
+rm -rf "$BUILD_DIR"
+
+COMMON_FLAGS="-O2 -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -flto=auto ${EXTRA_CFLAGS:-}"
+LINK_FLAGS="-L$PREFIX/lib -static -static-libgcc -static-libstdc++ -Wl,--gc-sections -flto=auto"
+
+TARGET_LIBC_ARCHIVE=$("${TARGET_HOST}-gcc" -print-file-name=libc.a 2>/dev/null || true)
+TARGET_LIB_DIR=""
+TARGET_TOOLCHAIN_ROOT=""
+TARGET_STAGING_ROOT=""
+FIND_ROOT_PATHS=("$PREFIX")
+LIBRARY_PATHS=("$PREFIX/lib")
+INCLUDE_PATHS=("$PREFIX/include")
+
+if [ -n "$TARGET_LIBC_ARCHIVE" ] && [ "$TARGET_LIBC_ARCHIVE" != "libc.a" ] && [ -f "$TARGET_LIBC_ARCHIVE" ]; then
+    TARGET_LIB_DIR=$(dirname "$TARGET_LIBC_ARCHIVE")
+    TARGET_TOOLCHAIN_ROOT=$(cd "$TARGET_LIB_DIR/.." && pwd)
+    FIND_ROOT_PATHS+=("$TARGET_TOOLCHAIN_ROOT")
+    LIBRARY_PATHS+=("$TARGET_LIB_DIR")
+fi
+
+if [ -n "${STAGING_DIR:-}" ]; then
+    TARGET_STAGING_ROOT=$(find "$STAGING_DIR" -maxdepth 1 -name 'target-*' -type d | head -1)
+    if [ -n "$TARGET_STAGING_ROOT" ]; then
+        FIND_ROOT_PATHS+=("$TARGET_STAGING_ROOT")
+        if [ -d "$TARGET_STAGING_ROOT/usr/lib" ]; then
+            LIBRARY_PATHS+=("$TARGET_STAGING_ROOT/usr/lib")
+        fi
+        if [ -d "$TARGET_STAGING_ROOT/usr/include" ]; then
+            INCLUDE_PATHS+=("$TARGET_STAGING_ROOT/usr/include")
+        fi
     fi
+fi
 
-    printf '%s' "$helper_path"
-}
+CMAKE_FIND_ROOT_PATH=$(IFS=';'; echo "${FIND_ROOT_PATHS[*]}")
+CMAKE_LIBRARY_PATH=$(IFS=';'; echo "${LIBRARY_PATHS[*]}")
+CMAKE_INCLUDE_PATH=$(IFS=';'; echo "${INCLUDE_PATHS[*]}")
 
-refresh_config_helpers() {
-    local config_sub config_guess dir
-    config_sub=$(find_config_helper config.sub)
-    config_guess=$(find_config_helper config.guess)
+export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
+unset PKG_CONFIG_SYSROOT_DIR
 
-    for dir in "$ARIA2_SRC" "$ARIA2_SRC/deps/wslay"; do
-        [ -d "$dir" ] || continue
-        if [ -n "$config_sub" ] && [ -f "$dir/config.sub" ]; then
-            cp "$config_sub" "$dir/config.sub"
-        fi
-        if [ -n "$config_guess" ] && [ -f "$dir/config.guess" ]; then
-            cp "$config_guess" "$dir/config.guess"
-        fi
-    done
-}
+cmake -S "$ARIA2_SRC" -B "$BUILD_DIR" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_SYSTEM_NAME=Linux \
+    -DCMAKE_C_COMPILER="${TARGET_HOST}-gcc" \
+    -DCMAKE_CXX_COMPILER="${TARGET_HOST}-g++" \
+    -DCMAKE_AR="$TARGET_AR" \
+    -DCMAKE_RANLIB="$TARGET_RANLIB" \
+    -DCMAKE_NM="$TARGET_NM" \
+    -DCMAKE_STRIP="${TARGET_HOST}-strip" \
+    -DCMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH" \
+    -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+    -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+    -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+    -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
+    -DCMAKE_PREFIX_PATH="$PREFIX" \
+    -DCMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH" \
+    -DCMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH" \
+    -DCMAKE_C_FLAGS="$COMMON_FLAGS" \
+    -DCMAKE_CXX_FLAGS="$COMMON_FLAGS" \
+    -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
+    -DCMAKE_CXX_STANDARD_LIBRARIES="$STANDARD_LIBS_STRING" \
+    -DARIA2_ENABLE_STATIC=ON \
+    -DARIA2_RELEASE_SIZE_OPTIMIZED=ON \
+    -DARIA2_RELEASE_LTO=ON \
+    -DARIA2_WITH_OPENSSL=ON \
+    -DARIA2_WITH_GNUTLS=OFF \
+    -DARIA2_WITH_LIBXML2=OFF \
+    -DARIA2_WITH_EXPAT=ON \
+    -DARIA2_WITH_CARES=ON \
+    -DARIA2_WITH_ZLIB=ON \
+    -DARIA2_WITH_SQLITE3=ON \
+    -DARIA2_WITH_LIBSSH2=ON \
+    -DARIA2_WITH_LIBUV=OFF \
+    -DARIA2_WITH_TCMALLOC=OFF \
+    -DARIA2_WITH_JEMALLOC=OFF \
+    -DARIA2_ENABLE_LIBARIA2=OFF \
+    -DARIA2_BASH_COMPLETION_DIR=share/bash-completion/completions
 
-cd "$ARIA2_SRC"
-
-# Regenerate build system
-autoreconf -i
-refresh_config_helpers
-
-ARIA2_LIBS="-lgcc_eh${EXTRA_LIBS_STRING:+ $EXTRA_LIBS_STRING}"
-
-AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" NM="$TARGET_NM" \
-./configure \
-    --host="$TARGET_HOST" \
-    --prefix=/usr \
-    --disable-nls \
-    --without-gnutls --with-openssl \
-    --without-libxml2 --with-libexpat \
-    --with-libcares --with-libz --with-sqlite3 --with-libssh2 \
-    ARIA2_STATIC=yes \
-    CXXFLAGS="-O2 -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -flto=auto ${EXTRA_CFLAGS:-}" \
-    CFLAGS="-O2 -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -flto=auto ${EXTRA_CFLAGS:-}" \
-    CPPFLAGS="-I$PREFIX/include" \
-    LDFLAGS="-L$PREFIX/lib -static -static-libgcc -static-libstdc++ -Wl,--gc-sections -flto=auto" \
-    LIBS="$ARIA2_LIBS" \
-    PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
-
-make -j"$NPROC"
+cmake --build "$BUILD_DIR" -j"$NPROC"
 
 # Strip the binary using the cross-strip from the toolchain
-"${TARGET_HOST}-strip" src/aria2c 2>/dev/null || strip src/aria2c 2>/dev/null || true
+"${TARGET_HOST}-strip" "$BUILD_DIR/$BINARY_NAME" 2>/dev/null || strip "$BUILD_DIR/$BINARY_NAME" 2>/dev/null || true
 
-log_info "aria2c built: $(file src/aria2c)"
+log_info "$BINARY_NAME built: $(file "$BUILD_DIR/$BINARY_NAME")"
+printf 'BINARY=%s\n' "$BUILD_DIR/$BINARY_NAME"
