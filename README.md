@@ -19,8 +19,8 @@ The UCI section type remains `config aria2` because the service is adapted from 
 ## Features
 
 - Statically linked OpenWrt binary built against the official SDK toolchain
-- OpenSSL TLS backend with libssh2 SFTP support
-- c-ares async DNS, expat Metalink/XML support, SQLite session/cookie support, and zlib compression support
+- libcurl transfer engine with OpenSSL TLS and libssh2-backed SFTP support
+- libtorrent-rasterbar BitTorrent backend with Boost.JSON and zlib support
 - ED2K, BitTorrent, Metalink, HTTP, HTTPS, FTP, and SFTP support from aria2-next
 - OPKG `.ipk` package for OpenWrt 24.10 and older
 - APK `.apk` package for OpenWrt 25.12 and newer
@@ -34,20 +34,20 @@ Dependency versions are pinned in [build_scripts/versions.sh](build_scripts/vers
 | Dependency | Version |
 | --- | --- |
 | zlib | 1.3.2 |
-| expat | 2.8.1 |
-| SQLite | 3.53.1 (`sqlite-autoconf-3530100`) |
-| c-ares | 1.34.6 |
 | libssh2 | 1.11.1 |
+| curl | 8.20.0 |
+| Boost | 1.91.0 |
+| libtorrent-rasterbar | 2.0.12 |
 | OpenSSL | 3.5.6 |
 
 OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend still uses ARC4 for BitTorrent MSE.
 
 ## Install From Release Assets
 
-Set `VERSION`, `TAG`, and `ARCH` to match the release and target architecture. Tagged upstream releases usually use `TAG=v${VERSION}`; untagged upstream snapshots may use a commit-qualified tag such as `aria2-next-2.1.3-eafd5866c408` while assets still use `VERSION=2.1.3`.
+Set `VERSION`, `TAG`, and `ARCH` to match the release and target architecture. Tagged upstream releases use `TAG=v${VERSION}`.
 
 ```sh
-VERSION=2.1.3
+VERSION=2.2.12
 TAG=v${VERSION}
 ARCH=x86_64
 ```
@@ -55,15 +55,15 @@ ARCH=x86_64
 For OPKG-based OpenWrt:
 
 ```sh
-wget "https://github.com/ysway/openwrt-aria2-next/releases/download/${TAG}/aria2-next-static_${VERSION}_${ARCH}.ipk"
-opkg install "aria2-next-static_${VERSION}_${ARCH}.ipk"
+wget "https://github.com/ysway/openwrt-aria2-next/releases/download/${TAG}/aria2-next-static_${VERSION}-1_${ARCH}.ipk"
+opkg install "aria2-next-static_${VERSION}-1_${ARCH}.ipk"
 ```
 
 For APK-based OpenWrt:
 
 ```sh
-wget "https://github.com/ysway/openwrt-aria2-next/releases/download/${TAG}/aria2-next-static_${VERSION}_${ARCH}.apk"
-apk add --allow-untrusted "aria2-next-static_${VERSION}_${ARCH}.apk"
+wget "https://github.com/ysway/openwrt-aria2-next/releases/download/${TAG}/aria2-next-static-${VERSION}-r1.apk"
+apk add --allow-untrusted "aria2-next-static-${VERSION}-r1.apk"
 ```
 
 For a raw binary install:

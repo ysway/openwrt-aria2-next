@@ -20,10 +20,10 @@ Important dependency pins at migration time:
 | Dependency | Version |
 | --- | --- |
 | zlib | 1.3.2 |
-| expat | 2.8.1 |
-| SQLite | 3.53.1 / autoconf 3530100 |
-| c-ares | 1.34.6 |
 | libssh2 | 1.11.1 |
+| curl | 8.20.0 |
+| Boost | 1.91.0 |
+| libtorrent-rasterbar | 2.0.12 |
 | OpenSSL | 3.5.6 |
 
 ## OpenWrt Packaging Surface
@@ -69,7 +69,8 @@ docker run --rm --user root \
 - `build_scripts/build_static_aria2.sh` configures aria2-next with CMake/Ninja.
 - Preserve OpenSSL `gcc-ar`, `gcc-ranlib`, and `gcc-nm` wrappers for LTO.
 - Preserve OpenSSL RC4 support because aria2 uses ARC4 for BitTorrent MSE.
-- The CMake build enables OpenSSL, zlib, expat, c-ares, SQLite, and libssh2, and disables GnuTLS, libxml2, libuv, jemalloc, and tcmalloc.
+- The CMake build enables OpenSSL, zlib, libcurl, Boost.JSON, and libtorrent-rasterbar, and disables GnuTLS, jemalloc, and tcmalloc.
+- libssh2 is consumed through libcurl so SFTP remains enabled without linking libssh2 directly into aria2-next.
 
 ## Package Format Lessons
 

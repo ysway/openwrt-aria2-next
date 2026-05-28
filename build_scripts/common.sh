@@ -25,11 +25,14 @@ log_fatal() { log_error "$@"; exit 1; }
 resolve_tool_command() {
     local preferred="${1:?preferred tool required}"
     local fallback="${2:-}"
+    local resolved_path
 
     if command -v "$preferred" >/dev/null 2>&1; then
-        printf '%s' "$preferred"
+        resolved_path="$(command -v "$preferred")"
+        printf '%s' "$resolved_path"
     elif [ -n "$fallback" ] && command -v "$fallback" >/dev/null 2>&1; then
-        printf '%s' "$fallback"
+        resolved_path="$(command -v "$fallback")"
+        printf '%s' "$resolved_path"
     else
         printf '%s' "$preferred"
     fi
