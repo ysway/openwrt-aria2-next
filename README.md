@@ -36,13 +36,12 @@ Dependency versions are pinned in [build_scripts/versions.sh](build_scripts/vers
 | zlib | 1.3.2 |
 | libssh2 | 1.11.1 |
 | curl | 8.20.0 |
-| c-ares | 1.34.6 |
 | Boost | 1.91.0 |
 | spdlog | 1.17.0 |
 | libtorrent-rasterbar | 2.0.12 |
 | OpenSSL | 3.5.6 |
 
-OpenWrt builds stage `spdlog` headers directly and keep the upstream `c-ares` pin synced so release metadata stays aligned with `aria2-next`.
+OpenWrt builds stage `spdlog` headers directly to satisfy upstream `aria2-next` discovery without requiring a separate `libspdlog.a` install.
 
 OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend still uses ARC4 for BitTorrent MSE.
 
@@ -51,7 +50,7 @@ OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend s
 Set `VERSION`, `TAG`, and `ARCH` to match the release and target architecture. Tagged upstream releases use `TAG=v${VERSION}`.
 
 ```sh
-VERSION=2.3.1
+VERSION=2.3.3
 TAG=v${VERSION}
 ARCH=x86_64
 ```
@@ -146,7 +145,7 @@ Outputs are written to `output/$PLATFORM/`:
 - `aria2-next-static-<version>-r1.apk`
 - `BUILDINFO`
 
-Validated locally for `aria2-next` `v2.3.1` with OpenWrt SDK `24.10.4`: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx`.
+Validated locally for `aria2-next` `v2.3.3` with OpenWrt SDK `24.10.4`: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx`.
 
 ## Build Pipeline
 

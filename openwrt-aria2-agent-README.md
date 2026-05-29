@@ -22,7 +22,6 @@ Current dependency pins:
 | zlib | 1.3.2 |
 | libssh2 | 1.11.1 |
 | curl | 8.20.0 |
-| c-ares | 1.34.6 |
 | Boost | 1.91.0 |
 | spdlog | 1.17.0 |
 | libtorrent-rasterbar | 2.0.12 |
@@ -72,7 +71,6 @@ docker run --rm --user root \
 - Preserve OpenSSL `gcc-ar`, `gcc-ranlib`, and `gcc-nm` wrappers for LTO.
 - Preserve OpenSSL RC4 support because aria2 uses ARC4 for BitTorrent MSE.
 - The CMake build enables OpenSSL, zlib, libcurl, Boost.JSON, libtorrent-rasterbar, and header-staged spdlog, and disables GnuTLS, jemalloc, and tcmalloc.
-- Keep `CARES_*` pins in `build_scripts/versions.sh` aligned with upstream even though the current OpenWrt packaging flow does not stage a local c-ares build.
 - libssh2 is consumed through libcurl so SFTP remains enabled without linking libssh2 directly into aria2-next.
 
 ## Package Format Lessons
@@ -111,7 +109,7 @@ bash build_scripts/build_apk.sh x86_64 "$tmpdir/aria2-next" "$tmpdir/out"
 
 For end-to-end confidence, run one Docker SDK build, preferably `x86_64` first.
 
-Latest validated `v2.3.1` SDK builds: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx` on `24.10.4`.
+Latest validated `v2.3.3` SDK builds: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx` on `24.10.4`.
 
 ## Known Migration Rules
 

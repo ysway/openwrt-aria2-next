@@ -113,7 +113,7 @@ get_aria2_version() {
 }
 
 get_submodule_commit() {
-    git -C "$REPO_ROOT" rev-parse --verify "HEAD:$UPSTREAM_SUBMODULE" 2>/dev/null || \
-        git -C "$ARIA2_SRC" rev-parse HEAD 2>/dev/null || \
+    git -C "$ARIA2_SRC" rev-parse HEAD 2>/dev/null || \
+        git -C "$REPO_ROOT" rev-parse --verify "HEAD:$UPSTREAM_SUBMODULE" 2>/dev/null || \
         echo "unknown"
 }
