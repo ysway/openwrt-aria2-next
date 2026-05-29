@@ -107,6 +107,7 @@ download_source "$OPENSSL_URL" "$SRC_DIR/$OPENSSL_ARCHIVE"
 download_source "$LIBSSH2_URL" "$SRC_DIR/$LIBSSH2_ARCHIVE"
 download_source "$CURL_URL" "$SRC_DIR/$CURL_ARCHIVE"
 download_source "$BOOST_URL" "$SRC_DIR/$BOOST_ARCHIVE"
+download_source "$SPDLOG_URL" "$SRC_DIR/$SPDLOG_ARCHIVE"
 download_source "$LIBTORRENT_URL" "$SRC_DIR/$LIBTORRENT_ARCHIVE"
 
 # ── zlib ────────────────────────────────────────────────────────────────────
@@ -266,6 +267,14 @@ rm -rf "boost_${BOOST_VERSION_UNDERSCORE}"
 extract_source "$SRC_DIR/$BOOST_ARCHIVE" "$BUILDDIR"
 rm -rf "$PREFIX/include/boost"
 cp -R "boost_${BOOST_VERSION_UNDERSCORE}/boost" "$PREFIX/include/"
+
+# ── spdlog headers ───────────────────────────────────────────────────────────
+log_info "Installing spdlog ${SPDLOG_VERSION}"
+cd "$BUILDDIR"
+rm -rf "spdlog-${SPDLOG_VERSION}"
+extract_source "$SRC_DIR/$SPDLOG_ARCHIVE" "$BUILDDIR"
+rm -rf "$PREFIX/include/spdlog"
+cp -R "spdlog-${SPDLOG_VERSION}/include/spdlog" "$PREFIX/include/"
 
 # ── libtorrent-rasterbar ───────────────────────────────────────────────────
 log_info "Building libtorrent-rasterbar ${LIBTORRENT_VERSION}"

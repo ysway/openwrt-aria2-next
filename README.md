@@ -36,9 +36,13 @@ Dependency versions are pinned in [build_scripts/versions.sh](build_scripts/vers
 | zlib | 1.3.2 |
 | libssh2 | 1.11.1 |
 | curl | 8.20.0 |
+| c-ares | 1.34.6 |
 | Boost | 1.91.0 |
+| spdlog | 1.17.0 |
 | libtorrent-rasterbar | 2.0.12 |
 | OpenSSL | 3.5.6 |
+
+OpenWrt builds stage `spdlog` headers directly and keep the upstream `c-ares` pin synced so release metadata stays aligned with `aria2-next`.
 
 OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend still uses ARC4 for BitTorrent MSE.
 
@@ -47,7 +51,7 @@ OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend s
 Set `VERSION`, `TAG`, and `ARCH` to match the release and target architecture. Tagged upstream releases use `TAG=v${VERSION}`.
 
 ```sh
-VERSION=2.2.12
+VERSION=2.3.1
 TAG=v${VERSION}
 ARCH=x86_64
 ```
@@ -142,6 +146,8 @@ Outputs are written to `output/$PLATFORM/`:
 - `aria2-next-static-<version>-r1.apk`
 - `BUILDINFO`
 
+Validated locally for `aria2-next` `v2.3.1` with OpenWrt SDK `24.10.4`: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx`.
+
 ## Build Pipeline
 
 [.github/workflows/build-aria2.yml](.github/workflows/build-aria2.yml) builds the target matrix by running `docker run` against official SDK images such as `ghcr.io/openwrt/sdk:x86_64-V24.10.4`. It does not use the GitHub Actions `container:` directive.
@@ -160,7 +166,7 @@ aria2-next/                 Git submodule for upstream source
 build_scripts/              OpenWrt SDK, static dependency, package, and feed helpers
 feed_template/              GitHub Pages feed UI template
 package/aria2-next-static/  OpenWrt package Makefile, init script, UCI config, package hooks
-setup.sh                    Quick installer for release assets
+install.sh                  Quick installer for release assets
 ```
 
 ## Verification Helpers

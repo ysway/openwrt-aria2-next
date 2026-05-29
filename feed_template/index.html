@@ -167,7 +167,10 @@ service aria2-next enable</pre>
           <h2>Build profile</h2>
           <p>
             These packages are built against official OpenWrt SDK container images and link aria2-next statically with
-            libcurl, libtorrent-rasterbar, OpenSSL, libssh2, Boost headers, and zlib.
+            libcurl, libtorrent-rasterbar, OpenSSL, libssh2, Boost headers, spdlog headers, and zlib.
+          </p>
+          <p>
+            Upstream release metadata also tracks c-ares so dependency sync stays aligned with aria2-next packaging changes.
           </p>
         </section>
 

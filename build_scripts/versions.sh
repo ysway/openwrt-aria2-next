@@ -18,11 +18,21 @@ CURL_ARCHIVE="curl-8.20.0.tar.xz"
 CURL_URL="https://curl.se/download/curl-8.20.0.tar.xz"
 CURL_SHA256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896"
 
+CARES_VERSION="1.34.6"
+CARES_ARCHIVE="c-ares-1.34.6.tar.gz"
+CARES_URL="https://github.com/c-ares/c-ares/releases/download/v1.34.6/c-ares-1.34.6.tar.gz"
+CARES_SHA256="912dd7cc3b3e8a79c52fd7fb9c0f4ecf0aaa73e45efda880266a2d6e26b84ef5"
+
 BOOST_VERSION="1.91.0"
 BOOST_VERSION_UNDERSCORE="1_91_0"
 BOOST_ARCHIVE="boost_1_91_0.tar.bz2"
 BOOST_URL="https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.bz2"
 BOOST_SHA256="de5e6b0e4913395c6bdfa90537febd9028ea4c0735d2cdb0cd9b45d5f51264f5"
+
+SPDLOG_VERSION="1.17.0"
+SPDLOG_ARCHIVE="spdlog-1.17.0.tar.gz"
+SPDLOG_URL="https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz"
+SPDLOG_SHA256="d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744"
 
 LIBTORRENT_VERSION="2.0.12"
 LIBTORRENT_ARCHIVE="libtorrent-rasterbar-2.0.12.tar.gz"
