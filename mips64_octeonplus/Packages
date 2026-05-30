@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.3.6-1
+Architecture: mips64_octeonplus
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with libcurl, libtorrent-rasterbar,
+ Boost headers, OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 11919360
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.3.6-1_mips64_octeonplus.ipk
+Size: 4683973
+MD5Sum: 9b11bc3e4b937afaace7e17d4789b4af
+SHA256sum: 581ad456a58fea23eac60345e59adf34ce17db5726beef2c73b236ffb8543d82
+

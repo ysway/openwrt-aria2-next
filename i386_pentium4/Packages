@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.3.6-1
+Architecture: i386_pentium4
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with libcurl, libtorrent-rasterbar,
+ Boost headers, OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 3604480
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.3.6-1_i386_pentium4.ipk
+Size: 3586615
+MD5Sum: 12b52d211c2529bbb1c6b3876cf77bf4
+SHA256sum: aea72bf807f823f414287a0cd5f484b6331bd439a9b542452268a6f186f17122
+

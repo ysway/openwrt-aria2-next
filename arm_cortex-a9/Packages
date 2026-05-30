@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.3.6-1
+Architecture: arm_cortex-a9
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with libcurl, libtorrent-rasterbar,
+ Boost headers, OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 2836480
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.3.6-1_arm_cortex-a9.ipk
+Size: 2815160
+MD5Sum: a18cfac833e9657a3bdbfff519934ce5
+SHA256sum: bf2c14a52d9f1776e3d9c06147a1eb5a6c5a2f0a48f74b55db1dc6da9359806b
+
