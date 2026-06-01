@@ -33,9 +33,9 @@ openwrt_target: $PLATFORM
 sdk_version: $SDK_VERSION
 submodule_commit: $SUBMODULE_COMMIT
 aria2_version: $ARIA2_VERSION
-curl_version: $CURL_VERSION
-boost_version: $BOOST_VERSION
-libtorrent_version: $LIBTORRENT_VERSION
+expat_version: $EXPAT_VERSION
+sqlite_version: $SQLITE_VERSION
+cares_version: $CARES_VERSION
 openssl_version: $OPENSSL_VERSION
 zlib_version: $ZLIB_VERSION
 libssh2_version: $LIBSSH2_VERSION

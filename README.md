@@ -19,9 +19,8 @@ The UCI section type remains `config aria2` because the service is adapted from 
 ## Features
 
 - Statically linked OpenWrt binary built against the official SDK toolchain
-- libcurl transfer engine with OpenSSL TLS and libssh2-backed SFTP support
-- libtorrent-rasterbar BitTorrent backend with Boost.JSON and zlib support
-- ED2K, BitTorrent, Metalink, HTTP, HTTPS, FTP, and SFTP support from aria2-next
+- Native aria2-next engine with expat, SQLite, c-ares, OpenSSL, libssh2, and zlib linked statically
+- ED2K, BitTorrent, Metalink, XML-RPC, Async DNS, HTTP, HTTPS, FTP, and SFTP support from aria2-next
 - OPKG `.ipk` package for OpenWrt 24.10 and older
 - APK `.apk` package for OpenWrt 25.12 and newer
 - Raw `aria2-next` binary artifact for manual installs
@@ -34,14 +33,13 @@ Dependency versions are pinned in [build_scripts/versions.sh](build_scripts/vers
 | Dependency | Version |
 | --- | --- |
 | zlib | 1.3.2 |
+| expat | 2.8.1 |
+| SQLite | 3.53.1 |
+| c-ares | 1.34.6 |
 | libssh2 | 1.11.1 |
-| curl | 8.20.0 |
-| Boost | 1.91.0 |
-| spdlog | 1.17.0 |
-| libtorrent-rasterbar | 2.0.12 |
 | OpenSSL | 3.5.6 |
 
-OpenWrt builds stage `spdlog` headers directly to satisfy upstream `aria2-next` discovery without requiring a separate `libspdlog.a` install.
+OpenWrt builds intentionally keep the upstream OpenSSL backend and disable the unused GnuTLS, nettle, GMP, libgcrypt, libuv, and libxml2 paths for a smaller static closure.
 
 OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend still uses ARC4 for BitTorrent MSE.
 
@@ -50,7 +48,7 @@ OpenSSL RC4 support is intentionally preserved because aria2's OpenSSL backend s
 Set `VERSION`, `TAG`, and `ARCH` to match the release and target architecture. Tagged upstream releases use `TAG=v${VERSION}`.
 
 ```sh
-VERSION=2.3.3
+VERSION=2.4.1
 TAG=v${VERSION}
 ARCH=x86_64
 ```
@@ -145,7 +143,7 @@ Outputs are written to `output/$PLATFORM/`:
 - `aria2-next-static-<version>-r1.apk`
 - `BUILDINFO`
 
-Validated locally for `aria2-next` `v2.3.3` with OpenWrt SDK `24.10.4`: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx`.
+Validated locally for `aria2-next` `v2.4.1` with OpenWrt SDK `24.10.4`: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx`.
 
 ## Build Pipeline
 

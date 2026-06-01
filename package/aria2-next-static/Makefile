@@ -38,9 +38,9 @@ define Package/aria2-next-static/description
   utility operated via command line. It supports HTTP/HTTPS, FTP, SFTP,
   ED2K, BitTorrent, and Metalink.
 
-  This package ships a statically linked binary with libcurl,
-  libtorrent-rasterbar, Boost headers, OpenSSL, libssh2, and zlib
-  embedded. No external library dependencies are required at runtime.
+  This package ships a statically linked binary with Expat, SQLite,
+  c-ares, OpenSSL, libssh2, and zlib embedded. No external library
+  dependencies are required at runtime.
 endef
 
 define Package/aria2-next-static/conffiles

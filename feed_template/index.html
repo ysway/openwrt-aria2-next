@@ -15,8 +15,8 @@
         <p class="eyebrow">OpenWrt Package Feed</p>
         <h1>aria2-next Static Feed</h1>
         <p class="lede">
-          Prebuilt static aria2-next packages for OpenWrt with libcurl transfers, libtorrent-rasterbar BitTorrent,
-          ED2K, Metalink, XML-RPC, and SFTP through libssh2-backed curl.
+          Prebuilt static aria2-next packages for OpenWrt with native BitTorrent, Metalink, XML-RPC, Async DNS,
+          ED2K, HTTPS, and SFTP support from the validated expat, SQLite, c-ares, OpenSSL, libssh2, and zlib build profile.
         </p>
         <div class="chip-row">
           <span class="chip">Fully static binaries</span>
@@ -167,7 +167,7 @@ service aria2-next enable</pre>
           <h2>Build profile</h2>
           <p>
             These packages are built against official OpenWrt SDK container images and link aria2-next statically with
-            libcurl, libtorrent-rasterbar, OpenSSL, libssh2, Boost headers, spdlog headers, and zlib.
+            expat, SQLite, c-ares, OpenSSL, libssh2, and zlib.
           </p>
         </section>
 

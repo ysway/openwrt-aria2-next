@@ -103,12 +103,11 @@ COMMON_CMAKE_ARGS=(
 # ── Download all sources ────────────────────────────────────────────────────
 log_info "Downloading dependency sources..."
 download_source "$ZLIB_URL" "$SRC_DIR/$ZLIB_ARCHIVE"
+download_source "$EXPAT_URL" "$SRC_DIR/$EXPAT_ARCHIVE"
+download_source "$SQLITE_URL" "$SRC_DIR/$SQLITE_ARCHIVE"
+download_source "$CARES_URL" "$SRC_DIR/$CARES_ARCHIVE"
 download_source "$OPENSSL_URL" "$SRC_DIR/$OPENSSL_ARCHIVE"
 download_source "$LIBSSH2_URL" "$SRC_DIR/$LIBSSH2_ARCHIVE"
-download_source "$CURL_URL" "$SRC_DIR/$CURL_ARCHIVE"
-download_source "$BOOST_URL" "$SRC_DIR/$BOOST_ARCHIVE"
-download_source "$SPDLOG_URL" "$SRC_DIR/$SPDLOG_ARCHIVE"
-download_source "$LIBTORRENT_URL" "$SRC_DIR/$LIBTORRENT_ARCHIVE"
 
 # ── zlib ────────────────────────────────────────────────────────────────────
 log_info "Building zlib ${ZLIB_VERSION}"
@@ -118,6 +117,44 @@ extract_source "$SRC_DIR/$ZLIB_ARCHIVE" "$BUILDDIR"
 cd "zlib-${ZLIB_VERSION}"
 CHOST="$TARGET_HOST" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" CFLAGS="$COMMON_CFLAGS" \
     ./configure --prefix="$PREFIX" --static
+make -j"$NPROC"
+make install
+
+# ── expat ───────────────────────────────────────────────────────────────────
+log_info "Building expat ${EXPAT_VERSION}"
+cd "$BUILDDIR"
+rm -rf "expat-${EXPAT_VERSION}"
+extract_source "$SRC_DIR/$EXPAT_ARCHIVE" "$BUILDDIR"
+cd "expat-${EXPAT_VERSION}"
+CHOST="$TARGET_HOST" CC="${TARGET_HOST}-gcc" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" \
+    CFLAGS="$COMMON_CFLAGS" LDFLAGS="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
+    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static
+make -j"$NPROC"
+make install
+
+# ── SQLite ──────────────────────────────────────────────────────────────────
+log_info "Building SQLite ${SQLITE_VERSION}"
+cd "$BUILDDIR"
+rm -rf "sqlite-autoconf-${SQLITE_AUTOCONF_VERSION}"
+extract_source "$SRC_DIR/$SQLITE_ARCHIVE" "$BUILDDIR"
+cd "sqlite-autoconf-${SQLITE_AUTOCONF_VERSION}"
+CHOST="$TARGET_HOST" CC="${TARGET_HOST}-gcc" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" \
+    CFLAGS="$COMMON_CFLAGS" CPPFLAGS="-I$PREFIX/include" \
+    LDFLAGS="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
+    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static \
+    --disable-readline
+make -j"$NPROC"
+make install
+
+# ── c-ares ──────────────────────────────────────────────────────────────────
+log_info "Building c-ares ${CARES_VERSION}"
+cd "$BUILDDIR"
+rm -rf "c-ares-${CARES_VERSION}"
+extract_source "$SRC_DIR/$CARES_ARCHIVE" "$BUILDDIR"
+cd "c-ares-${CARES_VERSION}"
+CHOST="$TARGET_HOST" CC="${TARGET_HOST}-gcc" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" \
+    CFLAGS="$COMMON_CFLAGS" LDFLAGS="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
+    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static
 make -j"$NPROC"
 make install
 
@@ -167,9 +204,9 @@ PATH="$OPENSSL_TOOL_WRAPPER_DIR:$PATH" make install_sw
 # ── libssh2 ────────────────────────────────────────────────────────────────
 log_info "Building libssh2 ${LIBSSH2_VERSION}"
 cd "$BUILDDIR"
-rm -rf "libssh2-${LIBSSH2_VERSION}" build/libssh2-for-curl-release
+rm -rf "libssh2-${LIBSSH2_VERSION}" build/libssh2-release
 extract_source "$SRC_DIR/$LIBSSH2_ARCHIVE" "$BUILDDIR"
-cmake -S "libssh2-${LIBSSH2_VERSION}" -B build/libssh2-for-curl-release \
+cmake -S "libssh2-${LIBSSH2_VERSION}" -B build/libssh2-release \
     "${COMMON_CMAKE_ARGS[@]}" \
     -DCMAKE_INSTALL_PREFIX="$PREFIX" \
     -DCMAKE_MODULE_LINKER_FLAGS="$COMMON_LINK_FLAGS" \
@@ -191,119 +228,7 @@ cmake -S "libssh2-${LIBSSH2_VERSION}" -B build/libssh2-for-curl-release \
     -DZLIB_LIBRARY="$PREFIX/lib/libz.a" \
     -DCMAKE_C_FLAGS="$COMMON_CFLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$COMMON_LINK_FLAGS"
-cmake --build build/libssh2-for-curl-release -j"$NPROC"
-cmake --install build/libssh2-for-curl-release
-
-# ── curl ───────────────────────────────────────────────────────────────────
-log_info "Building curl ${CURL_VERSION}"
-cd "$BUILDDIR"
-rm -rf "curl-${CURL_VERSION}" build/curl-release
-extract_source "$SRC_DIR/$CURL_ARCHIVE" "$BUILDDIR"
-cmake -S "curl-${CURL_VERSION}" -B build/curl-release \
-    "${COMMON_CMAKE_ARGS[@]}" \
-    -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-    -DCMAKE_MODULE_LINKER_FLAGS="$COMMON_LINK_FLAGS" \
-    -DCMAKE_SHARED_LINKER_FLAGS="$COMMON_LINK_FLAGS" \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DBUILD_STATIC_LIBS=ON \
-    -DBUILD_CURL_EXE=OFF \
-    -DBUILD_TESTING=OFF \
-    -DBUILD_EXAMPLES=OFF \
-    -DBUILD_LIBCURL_DOCS=OFF \
-    -DBUILD_MISC_DOCS=OFF \
-    -DCURL_USE_PKGCONFIG=OFF \
-    -DCURL_USE_OPENSSL=ON \
-    -DENABLE_THREADED_RESOLVER=ON \
-    -DOPENSSL_USE_STATIC_LIBS=ON \
-    -DOPENSSL_ROOT_DIR="$PREFIX" \
-    -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-    -DOPENSSL_SSL_LIBRARY="$PREFIX/lib/libssl.a" \
-    -DOPENSSL_CRYPTO_LIBRARY="$PREFIX/lib/libcrypto.a" \
-    -DCURL_ZLIB=ON \
-    -DZLIB_USE_STATIC_LIBS=ON \
-    -DZLIB_ROOT="$PREFIX" \
-    -DZLIB_INCLUDE_DIR="$PREFIX/include" \
-    -DZLIB_LIBRARY="$PREFIX/lib/libz.a" \
-    -DCURL_USE_LIBSSH2=ON \
-    -DLibssh2_ROOT="$PREFIX" \
-    -DUSE_NGHTTP2=OFF \
-    -DUSE_NGTCP2=OFF \
-    -DUSE_NGHTTP3=OFF \
-    -DUSE_QUICHE=OFF \
-    -DUSE_LIBIDN2=OFF \
-    -DCURL_USE_LIBPSL=OFF \
-    -DCURL_BROTLI=OFF \
-    -DCURL_ZSTD=OFF \
-    -DCURL_ENABLE_NTLM=OFF \
-    -DCURL_ENABLE_SMB=OFF \
-    -DCURL_DISABLE_AWS=ON \
-    -DCURL_DISABLE_DOH=ON \
-    -DCURL_DISABLE_FILE=ON \
-    -DCURL_DISABLE_IPFS=ON \
-    -DCURL_DISABLE_LDAP=ON \
-    -DCURL_DISABLE_LDAPS=ON \
-    -DCURL_DISABLE_DICT=ON \
-    -DCURL_DISABLE_GOPHER=ON \
-    -DCURL_DISABLE_IMAP=ON \
-    -DCURL_DISABLE_MQTT=ON \
-    -DCURL_DISABLE_POP3=ON \
-    -DCURL_DISABLE_RTSP=ON \
-    -DCURL_DISABLE_SMTP=ON \
-    -DCURL_DISABLE_TELNET=ON \
-    -DCURL_DISABLE_TFTP=ON \
-    -DCURL_DISABLE_WEBSOCKETS=ON \
-    -DCURL_CA_BUNDLE=auto \
-    -DCURL_CA_PATH=auto \
-    -DCURL_CA_FALLBACK=ON \
-    -DCMAKE_C_FLAGS="$COMMON_CFLAGS" \
-    -DCMAKE_EXE_LINKER_FLAGS="$COMMON_LINK_FLAGS"
-cmake --build build/curl-release -j"$NPROC"
-cmake --install build/curl-release
-
-# ── Boost headers ──────────────────────────────────────────────────────────
-log_info "Installing Boost headers ${BOOST_VERSION}"
-cd "$BUILDDIR"
-rm -rf "boost_${BOOST_VERSION_UNDERSCORE}"
-extract_source "$SRC_DIR/$BOOST_ARCHIVE" "$BUILDDIR"
-rm -rf "$PREFIX/include/boost"
-cp -R "boost_${BOOST_VERSION_UNDERSCORE}/boost" "$PREFIX/include/"
-
-# ── spdlog headers ───────────────────────────────────────────────────────────
-log_info "Installing spdlog ${SPDLOG_VERSION}"
-cd "$BUILDDIR"
-rm -rf "spdlog-${SPDLOG_VERSION}"
-extract_source "$SRC_DIR/$SPDLOG_ARCHIVE" "$BUILDDIR"
-rm -rf "$PREFIX/include/spdlog"
-cp -R "spdlog-${SPDLOG_VERSION}/include/spdlog" "$PREFIX/include/"
-
-# ── libtorrent-rasterbar ───────────────────────────────────────────────────
-log_info "Building libtorrent-rasterbar ${LIBTORRENT_VERSION}"
-cd "$BUILDDIR"
-rm -rf "libtorrent-rasterbar-${LIBTORRENT_VERSION}" build/libtorrent-rasterbar-release
-extract_source "$SRC_DIR/$LIBTORRENT_ARCHIVE" "$BUILDDIR"
-cmake -S "libtorrent-rasterbar-${LIBTORRENT_VERSION}" -B build/libtorrent-rasterbar-release \
-    "${COMMON_CMAKE_ARGS[@]}" \
-    -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-    -DBUILD_SHARED_LIBS=OFF \
-    -Dbuild_tests=OFF \
-    -Dbuild_examples=OFF \
-    -Dbuild_tools=OFF \
-    -Dpython-bindings=OFF \
-    -Dpython-egg-info=OFF \
-    -Dgnutls=OFF \
-    -Dencryption=ON \
-    -Ddht=ON \
-    -DOPENSSL_USE_STATIC_LIBS=ON \
-    -DOPENSSL_ROOT_DIR="$PREFIX" \
-    -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-    -DOPENSSL_SSL_LIBRARY="$PREFIX/lib/libssl.a" \
-    -DOPENSSL_CRYPTO_LIBRARY="$PREFIX/lib/libcrypto.a" \
-    -DBoost_NO_BOOST_CMAKE=ON \
-    -DBoost_INCLUDE_DIR="$PREFIX/include" \
-    -DCMAKE_C_FLAGS="$COMMON_CFLAGS" \
-    -DCMAKE_CXX_FLAGS="$COMMON_CXXFLAGS" \
-    -DCMAKE_EXE_LINKER_FLAGS="$COMMON_LINK_FLAGS"
-cmake --build build/libtorrent-rasterbar-release -j"$NPROC"
-cmake --install build/libtorrent-rasterbar-release
+cmake --build build/libssh2-release -j"$NPROC"
+cmake --install build/libssh2-release
 
 log_info "All static dependencies built successfully in $PREFIX"
