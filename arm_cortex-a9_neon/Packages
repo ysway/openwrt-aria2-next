@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.4.9-1
+Architecture: arm_cortex-a9_neon
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with Expat, SQLite, c-ares,
+ OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 2201600
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.4.9-1_arm_cortex-a9_neon.ipk
+Size: 2179332
+MD5Sum: 3283d7e6299cbc551a67ec0faeff7e27
+SHA256sum: 27155b966a980f836393aba8f85988456fd21592f6b74ddb7ddd1ad47ee6b3f7
+

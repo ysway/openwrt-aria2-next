@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.4.9-1
+Architecture: arm_arm926ej-s
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with Expat, SQLite, c-ares,
+ OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 2211840
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.4.9-1_arm_arm926ej-s.ipk
+Size: 2189232
+MD5Sum: 391285b0d509e3c0110ce93ed2d909cc
+SHA256sum: 0ec8d4899e932d7231f498fea58f4fd5ea70d2f4bcdf98bb451ad8962ffbc541
+

@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.4.9-1
+Architecture: mipsel_74kc
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with Expat, SQLite, c-ares,
+ OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 2365440
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.4.9-1_mipsel_74kc.ipk
+Size: 2344113
+MD5Sum: 52aff9c3bd3ba48a3eb9c545df754a1f
+SHA256sum: d7a0d718ce95977f32a212917312005d3c5aa9e70b73b676a46c0ed24f538361
+
