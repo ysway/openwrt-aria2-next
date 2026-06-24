@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           path: repo
@@ -163,7 +163,7 @@ jobs:
           path: ${{ env.ARTIFACT_DIR }}
 
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: repo
 
@@ -305,7 +305,7 @@ jobs:
           path: ${{ env.ARTIFACT_DIR }}
 
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           path: repo
