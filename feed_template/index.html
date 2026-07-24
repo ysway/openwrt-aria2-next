@@ -6,7 +6,14 @@
   <title>aria2-next Static Feed for OpenWrt</title>
   <meta name="description" content="Static aria2-next packages and raw binaries for OpenWrt, published from GitHub Actions with per-architecture package metadata.">
   <meta name="keywords" content="OpenWrt, aria2-next, aria2, static build, ipk, apk, package feed, GitHub Pages">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6cf2'/%3E%3Cpath d='M18 19h28v8H26v6h16v8H26v12h-8z' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
+  <noscript>
+    <style>
+      .tab-section { display: block !important; }
+      .tab-buttons, .version-toggle-container { display: none !important; }
+    </style>
+  </noscript>
 </head>
 <body>
   <div class="shell">
@@ -62,19 +69,19 @@
         <p>OpenWrt 25.12 and newer can install the matching APK file from the Packages tab or the release page.</p>
       </article>
       <article class="quick-card">
-        <h2>Audit Trail</h2>
-        <p>Each architecture directory also includes BUILDINFO and the raw aria2-next binary for verification and manual deployment.</p>
+        <h2>Verified Releases</h2>
+        <p>Release assets include SHA256SUMS. Each feed directory also carries BUILDINFO and the raw aria2-next binary.</p>
       </article>
     </section>
 
-    <nav class="tab-buttons" aria-label="Feed sections">
-      <button id="btn-usage" data-section="usage" type="button">Usage</button>
-      <button id="btn-packages" data-section="packages" type="button">Packages</button>
-      <button id="btn-notes" data-section="notes" type="button">Build Notes</button>
+    <nav class="tab-buttons" aria-label="Feed sections" role="tablist">
+      <button id="btn-usage" data-section="usage" type="button" role="tab" aria-controls="usage">Usage</button>
+      <button id="btn-packages" data-section="packages" type="button" role="tab" aria-controls="packages">Packages</button>
+      <button id="btn-notes" data-section="notes" type="button" role="tab" aria-controls="notes">Build Notes</button>
     </nav>
 
     <main>
-      <section id="usage" class="tab-section">
+      <section id="usage" class="tab-section" role="tabpanel" aria-labelledby="btn-usage">
         <section class="notice">
           <h2>What this feed publishes</h2>
           <p>
@@ -84,6 +91,13 @@
           <p>
             OPKG feed metadata is generated on this site today. APK files are published as standalone packages, not as a signed APK repository index.
           </p>
+        </section>
+
+        <section class="part">
+          <h2>Quick install</h2>
+          <p>The installer detects OPKG versus APK and selects the latest asset for your package architecture.</p>
+          <pre>wget -O- https://raw.githubusercontent.com/ysway/openwrt-aria2-next/master/setup.sh | sh</pre>
+          <p class="note">Download <code>setup.sh</code> first if you prefer to inspect it before running it.</p>
         </section>
 
         <div class="version-toggle-container">
@@ -132,11 +146,15 @@ apk add --allow-untrusted /tmp/aria2-next-static.apk</pre>
             Its UCI layout follows the OpenWrt project's <code>aria2</code> package, so existing
             OpenWrt-style settings and multi-instance <code>config aria2</code> sections can be reused after copying them to <code>/etc/config/aria2-next</code>.
           </p>
-          <pre>uci set aria2-next.main.enabled='1'
+          <pre>mkdir -p /mnt/data/downloads
+chown aria2:aria2 /mnt/data/downloads
+uci set aria2-next.main.enabled='1'
 uci set aria2-next.main.dir='/mnt/data/downloads'
+uci set aria2-next.main.rpc_auth_method='token'
+uci set aria2-next.main.rpc_secret='replace-with-a-long-random-secret'
 uci commit aria2-next
-service aria2-next start
-service aria2-next enable</pre>
+service aria2-next enable
+service aria2-next start</pre>
         </section>
 
         <section class="tips">
@@ -150,19 +168,25 @@ service aria2-next enable</pre>
         </section>
       </section>
 
-      <section id="packages" class="tab-section" style="display: none;">
+      <section id="packages" class="tab-section" role="tabpanel" aria-labelledby="btn-packages" style="display: none;">
         <section class="important">
           <p>Pick the files that match your device architecture.</p>
           <p>Use <code>.ipk</code> for OpenWrt 24.10 and older. Use <code>.apk</code> for OpenWrt 25.12 and newer.</p>
           <p>The raw <code>aria2-next</code> binary and <code>BUILDINFO</code> file are published alongside the packages for manual deployment and verification.</p>
         </section>
 
+        <label class="filter-control" for="architecture-filter">
+          <span>Filter architectures</span>
+          <input id="architecture-filter" type="search" inputmode="search" placeholder="Try x86_64, aarch64, mips…" autocomplete="off">
+        </label>
+        <p id="architecture-empty" class="notice filter-empty" hidden>No matching architecture is published in this feed.</p>
+
         <!-- arch-section-anchor -->
         <section></section>
         <!-- end-arch-section-anchor -->
       </section>
 
-      <section id="notes" class="tab-section" style="display: none;">
+      <section id="notes" class="tab-section" role="tabpanel" aria-labelledby="btn-notes" style="display: none;">
         <section class="part">
           <h2>Build profile</h2>
           <p>
@@ -181,9 +205,11 @@ service aria2-next enable</pre>
         <section class="part">
           <h2>Verification</h2>
           <p>
-            The build pipeline verifies the final binary type, checks for dynamic dependencies, and runs basic smoke tests.
-            Each published directory includes <code>BUILDINFO</code> so you can inspect dependency versions and the final static-link status.
+            The build pipeline verifies the final binary type, fails on dynamic dependencies, checks downloaded dependency hashes,
+            and runs basic executable smoke checks when the target can run on the builder.
+            Release builds compile the <code>aria2-next</code> target only; the large cross-built test executable is opt-in because it cannot run on most builders.
           </p>
+          <p>Each published directory includes <code>BUILDINFO</code> so you can inspect dependency versions and the final static-link status.</p>
         </section>
 
         <section class="part">
@@ -211,6 +237,8 @@ service aria2-next enable</pre>
     const sectionButtons = Array.from(document.querySelectorAll("[data-section]"));
     const versionButtons = Array.from(document.querySelectorAll(".v-btn"));
     const themeButton = document.getElementById("toggle-theme");
+    const architectureFilter = document.getElementById("architecture-filter");
+    const architectureEmpty = document.getElementById("architecture-empty");
 
     function showSection(sectionId) {
       document.querySelectorAll(".tab-section").forEach((section) => {
@@ -221,6 +249,7 @@ service aria2-next enable</pre>
         const active = button.dataset.section === sectionId;
         button.classList.toggle("active", active);
         button.classList.toggle("inactive", !active);
+        button.setAttribute("aria-selected", String(active));
       });
     }
 
@@ -242,15 +271,35 @@ service aria2-next enable</pre>
     function applyTheme(theme) {
       document.body.classList.toggle("dark", theme === "dark");
       themeButton.textContent = theme === "dark" ? "Light" : "Dark";
+      themeButton.setAttribute("aria-label", `Use ${theme === "dark" ? "light" : "dark"} theme`);
     }
 
     function toggleTheme() {
       const theme = document.body.classList.contains("dark") ? "light" : "dark";
-      localStorage.setItem("aria2-feed-theme", theme);
+      try {
+        localStorage.setItem("aria2-feed-theme", theme);
+      } catch (error) {
+        // Storage can be unavailable in privacy-restricted browsers.
+      }
       applyTheme(theme);
     }
 
+    function filterArchitectures(query) {
+      const normalized = query.trim().toLowerCase();
+      let visibleCount = 0;
+
+      document.querySelectorAll(".arch-section").forEach((section) => {
+        const architecture = section.dataset.architecture.toLowerCase();
+        const visible = !normalized || architecture.includes(normalized);
+        section.hidden = !visible;
+        visibleCount += visible ? 1 : 0;
+      });
+
+      architectureEmpty.hidden = visibleCount !== 0;
+    }
+
     themeButton.addEventListener("click", toggleTheme);
+    architectureFilter.addEventListener("input", () => filterArchitectures(architectureFilter.value));
     sectionButtons.forEach((button) => {
       button.addEventListener("click", () => showSection(button.dataset.section));
     });
@@ -259,7 +308,14 @@ service aria2-next enable</pre>
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-      applyTheme(localStorage.getItem("aria2-feed-theme") || "light");
+      let savedTheme = "";
+      try {
+        savedTheme = localStorage.getItem("aria2-feed-theme") || "";
+      } catch (error) {
+        // Fall through to the system preference.
+      }
+      const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      applyTheme(savedTheme || preferredTheme);
       showSection("usage");
       switchVersion("v24");
     });

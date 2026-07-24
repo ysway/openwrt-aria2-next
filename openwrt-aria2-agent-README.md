@@ -22,7 +22,7 @@ Current dependency pins:
 | zlib | 1.3.2 |
 | expat | 2.8.1 |
 | SQLite | 3.53.1 |
-| c-ares | 1.34.6 |
+| c-ares | 1.34.5 |
 | libssh2 | 1.11.1 |
 | OpenSSL | 3.5.6 |
 
@@ -45,14 +45,14 @@ Use host Docker to run official SDK containers. Do not use GitHub Actions `conta
 
 Default SDKs:
 
-- IPK: `ghcr.io/openwrt/sdk:<platform>-V24.10.4`
-- APK: `ghcr.io/openwrt/sdk:<platform>-V25.12.0`
+- IPK: `ghcr.io/openwrt/sdk:<platform>-V24.10.7`
+- APK: `ghcr.io/openwrt/sdk:<platform>-V25.12.5`
 
 Local one-target build pattern:
 
 ```sh
 PLATFORM=x86_64
-SDK_VERSION=24.10.4
+SDK_VERSION=24.10.7
 docker run --rm --user root \
   -v "$PWD:/work/repo:z" \
   -v "$PWD/output:/work/output:z" \
@@ -67,6 +67,10 @@ docker run --rm --user root \
 
 - Dependencies are built in `build_scripts/build_deps_static.sh`.
 - `build_scripts/build_static_aria2.sh` configures aria2-next with CMake/Ninja.
+- Release builds request the `aria2-next` target explicitly. Set
+  `ARIA2_BUILD_TESTS=yes` only when the cross-built test executable is needed.
+- Dependency archives are accepted only after matching the SHA-256 values in
+  `build_scripts/versions.sh`.
 - Preserve OpenSSL `gcc-ar`, `gcc-ranlib`, and `gcc-nm` wrappers for LTO.
 - Preserve OpenSSL RC4 support because aria2 uses ARC4 for BitTorrent MSE.
 - The CMake build enables OpenSSL, zlib, expat, SQLite3, c-ares, libssh2, BitTorrent, Metalink, XML-RPC, and WebSocket support.
@@ -84,6 +88,11 @@ Correct OpenWrt IPK format is a gzip-compressed tar archive containing:
 
 Do not use Debian `ar` format for these custom OpenWrt IPKs; it previously caused `Malformed package file` and opkg crashes on target devices.
 
+OpenWrt 25.12 uses APK v3. Build it with the SDK's apk-tools 3 `mkpkg`
+command through `build_scripts/build_apk.sh`; do not restore the older
+concatenated-gzip APK v2 implementation. Verify output with `apk verify
+--allow-untrusted`.
+
 ## Validation Commands
 
 Run these before handing work back:
@@ -94,6 +103,7 @@ sh -n package/aria2-next-static/files/aria2-next.init \
   package/aria2-next-static/files/postinst \
   package/aria2-next-static/files/prerm
 sh build_scripts/test_aria2_init.sh
+bash build_scripts/ci_matrix.sh x86_64,aarch64_cortex-a53
 ```
 
 Also inspect generated packages when packaging logic changes:
@@ -103,12 +113,14 @@ tmpdir=$(mktemp -d)
 printf '#!/bin/sh\necho aria2-next dummy\n' > "$tmpdir/aria2-next"
 chmod +x "$tmpdir/aria2-next"
 bash build_scripts/build_ipk.sh x86_64 "$tmpdir/aria2-next" "$tmpdir/out"
-bash build_scripts/build_apk.sh x86_64 "$tmpdir/aria2-next" "$tmpdir/out"
 ```
 
-For end-to-end confidence, run one Docker SDK build, preferably `x86_64` first.
+Run APK checks inside an OpenWrt 25.12 SDK so apk-tools 3 is available. For
+end-to-end confidence, run one Docker SDK build, preferably `x86_64` first.
 
-Latest validated `v2.4.1` SDK builds: `x86_64`, `arm_cortex-a9`, and `i386_pentium-mmx` on `24.10.4`.
+Previously validated `v2.4.1` SDK builds: `x86_64`, `arm_cortex-a9`, and
+`i386_pentium-mmx` on `24.10.4`. Revalidate with the current SDK defaults after
+changing toolchain-sensitive logic.
 
 ## Known Migration Rules
 

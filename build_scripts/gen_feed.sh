@@ -12,18 +12,27 @@ source "$SCRIPT_DIR/common.sh"
 ARTIFACTS_DIR="${1:?Usage: gen_feed.sh <artifacts_dir> <feed_output_dir>}"
 FEED_DIR="${2:?Feed output directory required}"
 
+if [ ! -d "$ARTIFACTS_DIR" ]; then
+    log_fatal "Artifacts directory not found: $ARTIFACTS_DIR"
+fi
+
+ARTIFACTS_DIR="$(cd "$ARTIFACTS_DIR" && pwd)"
 ensure_dir "$FEED_DIR"
+FEED_DIR="$(cd "$FEED_DIR" && pwd)"
 
 log_info "Generating feed index from $ARTIFACTS_DIR"
 
-# Copy all .ipk files to feed directory
-find "$ARTIFACTS_DIR" -name '*.ipk' -exec cp {} "$FEED_DIR/" \;
+# Copy package and auxiliary artifacts for this architecture.
+for artifact in "$ARTIFACTS_DIR"/*; do
+    [ -f "$artifact" ] || continue
+    cp "$artifact" "$FEED_DIR/"
+done
 
 # Generate Packages index
 cd "$FEED_DIR"
 IPK_COUNT=0
 PACKAGES_FILE="$FEED_DIR/Packages"
-> "$PACKAGES_FILE"
+: > "$PACKAGES_FILE"
 
 for ipk in *.ipk; do
     [ -f "$ipk" ] || continue
@@ -34,6 +43,9 @@ for ipk in *.ipk; do
     if tar -xOf "$FEED_DIR/$ipk" ./control.tar.gz 2>/dev/null \
         | tar -xzOf - ./control 2>/dev/null > "$CONTROL_FILE"; then
         cat "$CONTROL_FILE" >> "$PACKAGES_FILE"
+    else
+        rm -f "$CONTROL_FILE"
+        log_fatal "Could not extract package metadata from $FEED_DIR/$ipk"
     fi
     rm -f "$CONTROL_FILE"
 
@@ -50,13 +62,11 @@ SHA256sum: $SHA256
 EOF
 done
 
-# Compress Packages
-gzip -k "$PACKAGES_FILE" 2>/dev/null || gzip -c "$PACKAGES_FILE" > "${PACKAGES_FILE}.gz"
-
-# Copy index.html template if available
-TEMPLATE="$SCRIPT_DIR/../feed_template/index.html"
-if [ -f "$TEMPLATE" ]; then
-    cp "$TEMPLATE" "$FEED_DIR/index.html"
+if [ "$IPK_COUNT" -eq 0 ]; then
+    log_fatal "No IPK packages found in $ARTIFACTS_DIR"
 fi
+
+# Compress Packages
+gzip -n -c "$PACKAGES_FILE" > "${PACKAGES_FILE}.gz"
 
 log_info "Feed generated: $IPK_COUNT packages in $FEED_DIR"

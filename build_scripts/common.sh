@@ -8,19 +8,27 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Default static prefix inside SDK container
 PREFIX="${PREFIX:-/work/static-prefix}"
 BUILDDIR="${BUILDDIR:-/work/build}"
+SOURCE_CACHE_DIR="${SOURCE_CACHE_DIR:-$BUILDDIR/src}"
 UPSTREAM_SUBMODULE="${UPSTREAM_SUBMODULE:-aria2-next}"
 BINARY_NAME="${BINARY_NAME:-aria2-next}"
 PKG_BASE_NAME="${PKG_BASE_NAME:-aria2-next-static}"
 PACKAGE_FILES_DIR="${PACKAGE_FILES_DIR:-$REPO_ROOT/package/$PKG_BASE_NAME/files}"
 ARIA2_SRC="${REPO_ROOT}/${UPSTREAM_SUBMODULE}"
-NPROC="$(nproc 2>/dev/null || echo 4)"
+NPROC="${NPROC:-$(nproc 2>/dev/null || echo 4)}"
 
-export PREFIX BUILDDIR UPSTREAM_SUBMODULE BINARY_NAME PKG_BASE_NAME PACKAGE_FILES_DIR ARIA2_SRC NPROC
+export PREFIX BUILDDIR SOURCE_CACHE_DIR UPSTREAM_SUBMODULE BINARY_NAME PKG_BASE_NAME PACKAGE_FILES_DIR ARIA2_SRC NPROC
 
 log_info()  { echo "==> $*"; }
 log_warn()  { echo "WARNING: $*" >&2; }
 log_error() { echo "ERROR: $*" >&2; }
 log_fatal() { log_error "$@"; exit 1; }
+
+is_truthy() {
+    case "${1:-}" in
+        1|true|TRUE|yes|YES|on|ON) return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
 resolve_tool_command() {
     local preferred="${1:?preferred tool required}"
@@ -77,13 +85,45 @@ ensure_dir() {
 }
 
 download_source() {
-    local url="$1" dest="$2"
+    local url="$1" dest="$2" expected_sha256="${3:-}"
+    local actual_sha256 temp_file
+
     if [ -f "$dest" ]; then
-        log_info "Already downloaded: $dest"
-        return 0
+        if [ -z "$expected_sha256" ]; then
+            log_info "Already downloaded: $dest"
+            return 0
+        fi
+
+        actual_sha256=$(sha256sum "$dest" | awk '{print $1}')
+        if [ "$actual_sha256" = "$expected_sha256" ]; then
+            log_info "Using verified cached source: $dest"
+            return 0
+        fi
+
+        log_warn "Cached source checksum mismatch; downloading a clean copy: $dest"
     fi
+
+    ensure_dir "$(dirname "$dest")"
+    temp_file="${dest}.part.$$"
+    rm -f "$temp_file"
+
     log_info "Downloading $url"
-    curl -L --retry 5 --connect-timeout 15 -o "$dest" "$url"
+    if ! curl --fail --location --show-error --silent \
+        --retry 5 --retry-delay 2 --connect-timeout 15 \
+        --output "$temp_file" "$url"; then
+        rm -f "$temp_file"
+        log_fatal "Failed to download source: $url"
+    fi
+
+    if [ -n "$expected_sha256" ]; then
+        actual_sha256=$(sha256sum "$temp_file" | awk '{print $1}')
+        if [ "$actual_sha256" != "$expected_sha256" ]; then
+            rm -f "$temp_file"
+            log_fatal "Checksum mismatch for $url (expected $expected_sha256, got $actual_sha256)"
+        fi
+    fi
+
+    mv "$temp_file" "$dest"
 }
 
 extract_source() {

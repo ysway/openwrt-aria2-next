@@ -49,10 +49,12 @@ jobs:
 
           git add aria2-next
 
-          echo "old_sha=$OLD_SHA" >> "$GITHUB_OUTPUT"
-          echo "old_tag=$OLD_REF" >> "$GITHUB_OUTPUT"
-          echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
-          echo "new_tag=$NEW_REF" >> "$GITHUB_OUTPUT"
+          {
+            echo "old_sha=$OLD_SHA"
+            echo "old_tag=$OLD_REF"
+            echo "new_sha=$NEW_SHA"
+            echo "new_tag=$NEW_REF"
+          } >> "$GITHUB_OUTPUT"
 
           if git diff --cached --quiet -- aria2-next; then
             echo "changed=false" >> "$GITHUB_OUTPUT"

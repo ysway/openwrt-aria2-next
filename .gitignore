@@ -1,6 +1,7 @@
 # Build artifacts
 /work/
 /output*
+/.cache/
 *.ipk
 *.apk
 

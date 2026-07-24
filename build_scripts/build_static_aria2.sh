@@ -127,7 +127,15 @@ cmake -S "$ARIA2_SRC" -B "$BUILD_DIR" -G Ninja \
     -DARIA2_WITH_JEMALLOC=OFF \
     -DARIA2_BASH_COMPLETION_DIR=share/bash-completion/completions
 
-cmake --build "$BUILD_DIR" -j"$NPROC"
+BUILD_TARGETS=(aria2-next)
+if is_truthy "${ARIA2_BUILD_TESTS:-no}"; then
+    BUILD_TARGETS+=(aria2_tests)
+    log_info "Building aria2-next and the cross-compiled test executable"
+else
+    log_info "Building only aria2-next (test executable excluded from the default CI build)"
+fi
+
+cmake --build "$BUILD_DIR" --parallel "$NPROC" --target "${BUILD_TARGETS[@]}"
 
 # Strip the binary using the cross-strip from the toolchain
 "${TARGET_HOST}-strip" "$BUILD_DIR/$BINARY_NAME" 2>/dev/null || strip "$BUILD_DIR/$BINARY_NAME" 2>/dev/null || true

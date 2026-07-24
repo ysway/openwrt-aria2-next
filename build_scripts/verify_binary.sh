@@ -16,6 +16,7 @@ if [ ! -f "$BINARY" ]; then
 fi
 
 FULLY_STATIC="unknown"
+VERIFY_FAILED=0
 
 # ── File type ───────────────────────────────────────────────────────────────
 log_info "File type:"
@@ -46,11 +47,11 @@ else
     done
     if [ -n "$LEAKED" ]; then
         log_error "Embedded libraries appearing as dynamic deps:$LEAKED"
-        FULLY_STATIC="no"
     else
-        log_warn "Dynamic deps exist but none are from embedded libraries"
-        FULLY_STATIC="no"
+        log_error "Dynamic dependencies found in an artifact promised to be fully static"
     fi
+    FULLY_STATIC="no"
+    VERIFY_FAILED=1
 fi
 
 # ── ldd fallback ───────────────────────────────────────────────────────────
@@ -75,3 +76,7 @@ fi
 export FULLY_STATIC
 log_info "Verification complete. FULLY_STATIC=$FULLY_STATIC"
 printf 'FULLY_STATIC=%s\n' "$FULLY_STATIC"
+
+if [ "$VERIFY_FAILED" -ne 0 ]; then
+    log_fatal "Static linkage verification failed"
+fi

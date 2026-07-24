@@ -20,7 +20,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 source "$SCRIPT_DIR/versions.sh"
 
-SRC_DIR="$BUILDDIR/src"
+SRC_DIR="$SOURCE_CACHE_DIR"
 ensure_dir "$SRC_DIR" "$PREFIX"
 
 # Section-splitting lets the linker drop unused functions/data from static
@@ -102,12 +102,12 @@ COMMON_CMAKE_ARGS=(
 
 # ── Download all sources ────────────────────────────────────────────────────
 log_info "Downloading dependency sources..."
-download_source "$ZLIB_URL" "$SRC_DIR/$ZLIB_ARCHIVE"
-download_source "$EXPAT_URL" "$SRC_DIR/$EXPAT_ARCHIVE"
-download_source "$SQLITE_URL" "$SRC_DIR/$SQLITE_ARCHIVE"
-download_source "$CARES_URL" "$SRC_DIR/$CARES_ARCHIVE"
-download_source "$OPENSSL_URL" "$SRC_DIR/$OPENSSL_ARCHIVE"
-download_source "$LIBSSH2_URL" "$SRC_DIR/$LIBSSH2_ARCHIVE"
+download_source "$ZLIB_URL" "$SRC_DIR/$ZLIB_ARCHIVE" "$ZLIB_SHA256"
+download_source "$EXPAT_URL" "$SRC_DIR/$EXPAT_ARCHIVE" "$EXPAT_SHA256"
+download_source "$SQLITE_URL" "$SRC_DIR/$SQLITE_ARCHIVE" "$SQLITE_SHA256"
+download_source "$CARES_URL" "$SRC_DIR/$CARES_ARCHIVE" "$CARES_SHA256"
+download_source "$OPENSSL_URL" "$SRC_DIR/$OPENSSL_ARCHIVE" "$OPENSSL_SHA256"
+download_source "$LIBSSH2_URL" "$SRC_DIR/$LIBSSH2_ARCHIVE" "$LIBSSH2_SHA256"
 
 # ── zlib ────────────────────────────────────────────────────────────────────
 log_info "Building zlib ${ZLIB_VERSION}"
@@ -117,7 +117,7 @@ extract_source "$SRC_DIR/$ZLIB_ARCHIVE" "$BUILDDIR"
 cd "zlib-${ZLIB_VERSION}"
 CHOST="$TARGET_HOST" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" CFLAGS="$COMMON_CFLAGS" \
     ./configure --prefix="$PREFIX" --static
-make -j"$NPROC"
+make -j"$NPROC" libz.a
 make install
 
 # ── expat ───────────────────────────────────────────────────────────────────
@@ -128,7 +128,8 @@ extract_source "$SRC_DIR/$EXPAT_ARCHIVE" "$BUILDDIR"
 cd "expat-${EXPAT_VERSION}"
 CHOST="$TARGET_HOST" CC="${TARGET_HOST}-gcc" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" \
     CFLAGS="$COMMON_CFLAGS" LDFLAGS="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
-    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static
+    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static \
+    --without-tests --without-examples --without-xmlwf --without-docbook
 make -j"$NPROC"
 make install
 
@@ -154,7 +155,8 @@ extract_source "$SRC_DIR/$CARES_ARCHIVE" "$BUILDDIR"
 cd "c-ares-${CARES_VERSION}"
 CHOST="$TARGET_HOST" CC="${TARGET_HOST}-gcc" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" \
     CFLAGS="$COMMON_CFLAGS" LDFLAGS="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
-    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static
+    ./configure --host="$TARGET_HOST" --prefix="$PREFIX" --disable-shared --enable-static \
+    --disable-tests
 make -j"$NPROC"
 make install
 

@@ -19,6 +19,12 @@ if [ ! -f "$BINARY" ]; then
 fi
 
 # Check skip list
+if ! is_truthy "${UPX_ENABLED:-yes}"; then
+    log_info "UPX disabled by UPX_ENABLED=${UPX_ENABLED:-no}"
+    echo "UPX_APPLIED=no"
+    exit 0
+fi
+
 if [ "${UPX_SKIP:-no}" = "yes" ]; then
     log_info "UPX skipped for this target (UPX_SKIP=yes)"
     echo "UPX_APPLIED=no"
@@ -68,4 +74,5 @@ else
 fi
 
 log_info "UPX compression succeeded"
+rm -f "$BACKUP"
 echo "UPX_APPLIED=yes"
