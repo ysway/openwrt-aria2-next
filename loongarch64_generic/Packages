@@ -1,0 +1,17 @@
+Package: aria2-next-static
+Version: 2.5.6-1
+Architecture: loongarch64_generic
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink, and HTTP/HTTPS/FTP/SFTP support. This package ships a
+ statically linked aria2-next binary with Expat, SQLite, c-ares,
+ OpenSSL, libssh2, and zlib embedded.
+Installed-Size: 7208960
+Section: net
+Priority: optional
+Filename: aria2-next-static_2.5.6-1_loongarch64_generic.ipk
+Size: 3367972
+MD5Sum: 2bd04588b12370718769e57b8ef97018
+SHA256sum: 6c67a4062988359ad70c372d83809b37f54bae0fa3384d8c896ada525e7fd732
+
