@@ -32,8 +32,13 @@ fi
 # ── Install host build tools ───────────────────────────────────────────────
 log_info "Installing host build tools..."
 export DEBIAN_FRONTEND=noninteractive
+# The pinned SDK image is Debian Bullseye. Its security index can briefly
+# advertise a newer package before the corresponding .deb is present on every
+# mirror edge, which makes a normal install fail with 404. Keep APT signature
+# verification enabled, avoid upgrading the image's preinstalled tools, and
+# resolve newly installed helpers from the stable Bullseye archive.
 apt-get update -qq
-apt-get install -y --no-install-recommends \
+apt-get install -y --no-install-recommends --no-upgrade -t bullseye \
     pkg-config curl file bzip2 xz-utils upx-ucl ca-certificates binutils \
     make perl python3 python3-pip
 

@@ -50,16 +50,17 @@ The service is adapted from official OpenWrt `net/aria2`. OpenWrt 24.10 and 25.1
 
 Use host Docker to run official SDK containers. Do not use GitHub Actions `container:` for the build job.
 
-Default SDKs:
+Default SDK:
 
-- IPK: `ghcr.io/openwrt/sdk:<platform>-V24.10.7`
-- APK: `ghcr.io/openwrt/sdk:<platform>-V25.12.5`
+- IPK + APK: `ghcr.io/openwrt/sdk:<platform>-V25.12.5`
+- Legacy `riscv64_riscv64` IPK: `ghcr.io/openwrt/sdk:riscv64_riscv64-V24.10.7`
+- Legacy `mips_4kec` IPK: `ghcr.io/openwrt/sdk:mips_4kec-V24.10.7`
 
 Local one-target build pattern:
 
 ```sh
 PLATFORM=x86_64
-SDK_VERSION=24.10.7
+SDK_VERSION=25.12.5
 docker run --rm --user root \
   -v "$PWD:/work/repo:z" \
   -v "$PWD/output:/work/output:z" \

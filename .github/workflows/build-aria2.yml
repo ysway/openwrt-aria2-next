@@ -9,7 +9,7 @@ on:
         default: 'all'
         type: string
       sdk_version:
-        description: 'Override the SDK version for every selected target'
+        description: 'Override the SDK version (25.12+ required for IPK + APK; legacy RISC-V uses 24.10)'
         required: false
         default: ''
         type: string
@@ -41,10 +41,10 @@ concurrency:
 env:
   SOFTWARE_NAME: "aria2-next"
   ARTIFACT_DIR: "artifacts"
-  OPENWRT_IPK_SDK: "24.10.7"
-  OPENWRT_APK_SDK: "25.12.5"
-  # Platforms not available in 24.10 SDK (build with 25.12 instead)
-  ONLY_25: "riscv64_generic"
+  OPENWRT_SDK_VERSION: "25.12.5"
+  OPENWRT_LEGACY_SDK_VERSION: "24.10.7"
+  # These legacy targets have no 25.12.5 SDK tag; they remain IPK-only.
+  LEGACY_ONLY: "riscv64_riscv64 mips_4kec"
 
 jobs:
   prepare:
@@ -96,7 +96,7 @@ jobs:
           echo "aria2-next version: $VERSION"
 
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build ${{ matrix.platform }} (IPK + APK)
     needs: [prepare]
     runs-on: ubuntu-latest
     strategy:
@@ -133,12 +133,22 @@ jobs:
           if [ -n "$SDK_OVERRIDE" ]; then
             echo "version=$SDK_OVERRIDE" >> "$GITHUB_OUTPUT"
             echo "Using requested SDK $SDK_OVERRIDE"
-          elif echo "${{ env.ONLY_25 }}" | grep -qw "$PLATFORM"; then
-            echo "version=${{ env.OPENWRT_APK_SDK }}" >> "$GITHUB_OUTPUT"
-            echo "Using 25.12 SDK (platform only available in 25.12)"
+          elif echo "${{ env.LEGACY_ONLY }}" | grep -qw "$PLATFORM"; then
+            echo "version=${{ env.OPENWRT_LEGACY_SDK_VERSION }}" >> "$GITHUB_OUTPUT"
+            echo "Using legacy ${{ env.OPENWRT_LEGACY_SDK_VERSION }} SDK for $PLATFORM"
           else
-            echo "version=${{ env.OPENWRT_IPK_SDK }}" >> "$GITHUB_OUTPUT"
-            echo "Using ${{ env.OPENWRT_IPK_SDK }} SDK"
+            echo "version=${{ env.OPENWRT_SDK_VERSION }}" >> "$GITHUB_OUTPUT"
+            echo "Using ${{ env.OPENWRT_SDK_VERSION }} SDK for IPK + APK"
+          fi
+
+          SDK_VERSION="${SDK_OVERRIDE:-${{ env.OPENWRT_SDK_VERSION }}}"
+          if [ -z "$SDK_OVERRIDE" ] && echo "${{ env.LEGACY_ONLY }}" | grep -qw "$PLATFORM"; then
+            SDK_VERSION="${{ env.OPENWRT_LEGACY_SDK_VERSION }}"
+          fi
+          if [[ "$SDK_VERSION" == 25.* ]]; then
+            echo "build_apk=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_apk=auto" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Pull OpenWrt SDK Docker Image
@@ -162,7 +172,7 @@ jobs:
             -e PIP_CACHE_DIR="/work/repo/.cache/pip" \
             -e ARIA2_BUILD_TESTS \
             -e UPX_ENABLED \
-            -e BUILD_APK=no \
+            -e BUILD_APK="${{ steps.sdk.outputs.build_apk }}" \
             -e TERM=xterm \
             "ghcr.io/openwrt/sdk:${{ matrix.platform }}-V${{ steps.sdk.outputs.version }}" \
             bash /work/repo/build_scripts/build_in_sdk.sh "${{ matrix.platform }}"
@@ -188,8 +198,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  package-apk:
-    name: Build APK v3 packages
+  package-artifacts:
+    name: Assemble complete artifact set
     needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
@@ -198,23 +208,6 @@ jobs:
         with:
           pattern: aria2-next-static-*
           path: ${{ env.ARTIFACT_DIR }}
-
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-        with:
-          submodules: true
-          path: repo
-
-      - name: Pull OpenWrt APK SDK
-        run: docker pull "ghcr.io/openwrt/sdk:x86_64-V${{ env.OPENWRT_APK_SDK }}"
-
-      - name: Build and Verify APK v3 Packages
-        run: |
-          docker run --rm --user root \
-            -v "$(pwd)/repo:/work/repo:ro" \
-            -v "$(pwd)/${{ env.ARTIFACT_DIR }}:/work/artifacts" \
-            "ghcr.io/openwrt/sdk:x86_64-V${{ env.OPENWRT_APK_SDK }}" \
-            bash /work/repo/build_scripts/build_apk_artifacts.sh /work/artifacts
 
       - name: Upload Complete Artifact Set
         uses: actions/upload-artifact@v7
@@ -226,7 +219,7 @@ jobs:
 
   deploy:
     name: Deploy Feed
-    needs: [prepare, package-apk]
+    needs: [prepare, package-artifacts]
     if: ${{ github.event_name == 'repository_dispatch' || inputs.publish }}
     runs-on: ubuntu-slim
     permissions:
@@ -265,8 +258,8 @@ jobs:
           cp -r ../repo/feed_template/* ./
           touch .nojekyll
 
-          # Generate one OPKG feed directory per target and retain the APK,
-          # raw binary, and BUILDINFO files beside its package metadata.
+          # Generate one OPKG feed directory per target and retain both
+          # package formats, the raw binary, and BUILDINFO beside the metadata.
           for dir in ../${{ env.ARTIFACT_DIR }}/*/; do
             [ -d "$dir" ] || continue
             name=$(basename "$dir")
@@ -283,7 +276,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [prepare, package-apk]
+    needs: [prepare, package-artifacts]
     if: ${{ github.event_name == 'repository_dispatch' || inputs.publish }}
     runs-on: ubuntu-slim
     permissions:

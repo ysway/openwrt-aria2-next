@@ -27,17 +27,18 @@ This repository owns the OpenWrt build, packaging, service integration, release,
 
 | Architecture | Platforms | UPX | Default SDK |
 |:---|:---|:---:|:---:|
-| **AArch64** | `aarch64_cortex-a53`, `aarch64_cortex-a72`, `aarch64_cortex-a76`, `aarch64_generic` | Yes | 24.10.7 |
-| **ARM** | `arm_arm1176jzf-s_vfp`, `arm_arm926ej-s`, `arm_cortex-a15_neon-vfpv4`, `arm_cortex-a5_vfpv4`, `arm_cortex-a7`, `arm_cortex-a7_neon-vfpv4`, `arm_cortex-a7_vfpv4`, `arm_cortex-a8_vfpv3`, `arm_cortex-a9`, `arm_cortex-a9_neon`, `arm_cortex-a9_vfpv3-d16`, `arm_fa526`, `arm_xscale` | Yes | 24.10.7 |
-| **x86** | `i386_pentium-mmx`, `i386_pentium4` | Yes | 24.10.7 |
-| **x86_64** | `x86_64` | Yes | 24.10.7 |
-| **MIPS** | `mips_24kc`, `mips_4kec`, `mips_mips32` | Yes | 24.10.7 |
-| **MIPS-EL** | `mipsel_24kc`, `mipsel_24kc_24kf`, `mipsel_74kc`, `mipsel_mips32` | Yes | 24.10.7 |
-| **MIPS64** | `mips64_mips64r2`, `mips64_octeonplus` | No | 24.10.7 |
-| **MIPS64-EL** | `mips64el_mips64r2` | No | 24.10.7 |
-| **RISC-V 64** | `riscv64_riscv64` | No | 24.10.7 |
+| **AArch64** | `aarch64_cortex-a53`, `aarch64_cortex-a72`, `aarch64_cortex-a76`, `aarch64_generic` | Yes | 25.12.5 |
+| **ARM** | `arm_arm1176jzf-s_vfp`, `arm_arm926ej-s`, `arm_cortex-a15_neon-vfpv4`, `arm_cortex-a5_vfpv4`, `arm_cortex-a7`, `arm_cortex-a7_neon-vfpv4`, `arm_cortex-a7_vfpv4`, `arm_cortex-a8_vfpv3`, `arm_cortex-a9`, `arm_cortex-a9_neon`, `arm_cortex-a9_vfpv3-d16`, `arm_fa526`, `arm_xscale` | Yes | 25.12.5 |
+| **x86** | `i386_pentium-mmx`, `i386_pentium4` | Yes | 25.12.5 |
+| **x86_64** | `x86_64` | Yes | 25.12.5 |
+| **MIPS** | `mips_24kc`, `mips_mips32` | Yes | 25.12.5 |
+| **MIPS** | `mips_4kec` | Yes | 24.10.7 (legacy IPK) |
+| **MIPS-EL** | `mipsel_24kc`, `mipsel_24kc_24kf`, `mipsel_74kc`, `mipsel_mips32` | Yes | 25.12.5 |
+| **MIPS64** | `mips64_mips64r2`, `mips64_octeonplus` | No | 25.12.5 |
+| **MIPS64-EL** | `mips64el_mips64r2` | No | 25.12.5 |
+| **RISC-V 64** | `riscv64_riscv64` | No | 24.10.7 (legacy IPK) |
 | **RISC-V 64** | `riscv64_generic` | No | 25.12.5 |
-| **LoongArch64** | `loongarch64_generic` | No | 24.10.7 |
+| **LoongArch64** | `loongarch64_generic` | No | 25.12.5 |
 
 </details>
 
@@ -250,7 +251,7 @@ cd openwrt-aria2-next
 
 ```sh
 PLATFORM=x86_64
-SDK_VERSION=24.10.7
+SDK_VERSION=25.12.5
 mkdir -p output .cache/sources .cache/pip
 
 docker run --rm --user root \
@@ -273,10 +274,10 @@ Output is written to `output/<platform>/`:
 - `aria2-next-static_<version>-1_<platform>.ipk`
 - `BUILDINFO`
 
-When the selected SDK contains apk-tools 3, the local build also creates
-`aria2-next-static-<version>-r1.apk`. The CI workflow packages all targets in a
-separate OpenWrt 25.12 SDK job so APK v3 output is consistent even when the
-binary was built with a 24.10 SDK. The release workflow then renames package
+The 25.12.5 SDK contains both `ipkg-build` and apk-tools 3, so the local build
+creates the IPK and APK v3 packages in the same target job. The old
+`riscv64_riscv64` and `mips_4kec` targets have no 25.12.5 SDK tag and remain
+24.10.7 IPK-only compatibility builds. The release workflow renames package
 files to globally unique asset names without changing their internal versions.
 
 ### Build options
@@ -286,7 +287,7 @@ files to globally unique asset names without changing their internal versions.
 | `NPROC` | detected CPU count | Limits parallel Make/Ninja work |
 | `ARIA2_BUILD_TESTS` / `build_tests` | `no` | Also compiles `aria2_tests`; it is not runnable for most cross targets |
 | `UPX_ENABLED` / `upx` | `yes` | Enables compression where the target safety map permits it |
-| `BUILD_APK` | `auto` | Builds APK v3 when apk-tools 3 is available; CI defers this to its packaging job |
+| `BUILD_APK` | `auto` | Builds APK v3 when apk-tools 3 is available; CI enables it explicitly with the 25.12.5 SDK |
 | `SOURCE_CACHE_DIR` | `/work/build/src` | Reuses verified dependency archives |
 | `PIP_CACHE_DIR` | pip default | Reuses CMake/Ninja wheels |
 | `CMAKE_PIP_SPEC` | `cmake>=3.25,<4` | Overrides the container-side CMake package constraint |

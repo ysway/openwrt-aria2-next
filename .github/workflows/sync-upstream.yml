@@ -146,7 +146,7 @@ jobs:
 
       - name: Pull x86 OpenWrt SDK image
         if: steps.update.outputs.changed == 'true'
-        run: docker pull ghcr.io/openwrt/sdk:x86_64-V24.10.7
+        run: docker pull ghcr.io/openwrt/sdk:x86_64-V25.12.5
 
       - name: Build and test x86 candidate
         if: steps.update.outputs.changed == 'true'
@@ -162,15 +162,15 @@ jobs:
             -v "$RUNNER_TEMP/aria2-sync-output:/work/output" \
             -v "$RUNNER_TEMP/aria2-sync-cache:/work/cache" \
             -e PLATFORM=x86_64 \
-            -e OPENWRT_SDK_VERSION=24.10.7 \
+            -e OPENWRT_SDK_VERSION=25.12.5 \
             -e BUILD_VERSION="sync-${NEW_SHA:0:8}" \
             -e SOURCE_CACHE_DIR=/work/cache/sources \
             -e PIP_CACHE_DIR=/work/cache/pip \
             -e ARIA2_BUILD_TESTS=yes \
             -e UPX_ENABLED=yes \
-            -e BUILD_APK=no \
+            -e BUILD_APK=yes \
             -e TERM=xterm \
-            ghcr.io/openwrt/sdk:x86_64-V24.10.7 \
+            ghcr.io/openwrt/sdk:x86_64-V25.12.5 \
             bash -c 'bash /work/repo/build_scripts/build_in_sdk.sh x86_64 && ctest --test-dir /work/build/aria2-next-build --output-on-failure'
 
   synchronize:
