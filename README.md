@@ -23,7 +23,7 @@ This repository owns the OpenWrt build, packaging, service integration, release,
 ## Supported Architectures
 
 <details>
-<summary>All 33 target platforms</summary>
+<summary>All 31 target platforms</summary>
 
 | Architecture | Platforms | UPX | Default SDK |
 |:---|:---|:---:|:---:|
@@ -32,11 +32,9 @@ This repository owns the OpenWrt build, packaging, service integration, release,
 | **x86** | `i386_pentium-mmx`, `i386_pentium4` | Yes | 25.12.5 |
 | **x86_64** | `x86_64` | Yes | 25.12.5 |
 | **MIPS** | `mips_24kc`, `mips_mips32` | Yes | 25.12.5 |
-| **MIPS** | `mips_4kec` | Yes | 24.10.7 (legacy IPK) |
 | **MIPS-EL** | `mipsel_24kc`, `mipsel_24kc_24kf`, `mipsel_74kc`, `mipsel_mips32` | Yes | 25.12.5 |
 | **MIPS64** | `mips64_mips64r2`, `mips64_octeonplus` | No | 25.12.5 |
 | **MIPS64-EL** | `mips64el_mips64r2` | No | 25.12.5 |
-| **RISC-V 64** | `riscv64_riscv64` | No | 24.10.7 (legacy IPK) |
 | **RISC-V 64** | `riscv64_generic` | No | 25.12.5 |
 | **LoongArch64** | `loongarch64_generic` | No | 25.12.5 |
 
@@ -275,10 +273,9 @@ Output is written to `output/<platform>/`:
 - `BUILDINFO`
 
 The 25.12.5 SDK contains both `ipkg-build` and apk-tools 3, so the local build
-creates the IPK and APK v3 packages in the same target job. The old
-`riscv64_riscv64` and `mips_4kec` targets have no 25.12.5 SDK tag and remain
-24.10.7 IPK-only compatibility builds. The release workflow renames package
-files to globally unique asset names without changing their internal versions.
+creates the IPK and APK v3 packages in the same target job. The release workflow
+renames package files to globally unique asset names without changing their
+internal versions.
 
 ### Build options
 

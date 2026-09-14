@@ -53,8 +53,6 @@ Use host Docker to run official SDK containers. Do not use GitHub Actions `conta
 Default SDK:
 
 - IPK + APK: `ghcr.io/openwrt/sdk:<platform>-V25.12.5`
-- Legacy `riscv64_riscv64` IPK: `ghcr.io/openwrt/sdk:riscv64_riscv64-V24.10.7`
-- Legacy `mips_4kec` IPK: `ghcr.io/openwrt/sdk:mips_4kec-V24.10.7`
 
 Local one-target build pattern:
 

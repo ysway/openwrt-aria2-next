@@ -35,13 +35,11 @@ ALL_PLATFORMS=(
     mips64_octeonplus
     mips64el_mips64r2
     mips_24kc
-    mips_4kec
     mips_mips32
     mipsel_24kc
     mipsel_24kc_24kf
     mipsel_74kc
     mipsel_mips32
-    riscv64_riscv64
     x86_64
     riscv64_generic
 )

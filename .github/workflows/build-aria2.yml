@@ -9,7 +9,7 @@ on:
         default: 'all'
         type: string
       sdk_version:
-        description: 'Override the SDK version (25.12+ required for IPK + APK; legacy RISC-V uses 24.10)'
+        description: 'Override the SDK version for every selected target'
         required: false
         default: ''
         type: string
@@ -42,9 +42,6 @@ env:
   SOFTWARE_NAME: "aria2-next"
   ARTIFACT_DIR: "artifacts"
   OPENWRT_SDK_VERSION: "25.12.5"
-  OPENWRT_LEGACY_SDK_VERSION: "24.10.7"
-  # These legacy targets have no 25.12.5 SDK tag; they remain IPK-only.
-  LEGACY_ONLY: "riscv64_riscv64 mips_4kec"
 
 jobs:
   prepare:
@@ -129,26 +126,12 @@ jobs:
         env:
           SDK_OVERRIDE: ${{ inputs.sdk_version }}
         run: |
-          PLATFORM="${{ matrix.platform }}"
           if [ -n "$SDK_OVERRIDE" ]; then
             echo "version=$SDK_OVERRIDE" >> "$GITHUB_OUTPUT"
             echo "Using requested SDK $SDK_OVERRIDE"
-          elif echo "${{ env.LEGACY_ONLY }}" | grep -qw "$PLATFORM"; then
-            echo "version=${{ env.OPENWRT_LEGACY_SDK_VERSION }}" >> "$GITHUB_OUTPUT"
-            echo "Using legacy ${{ env.OPENWRT_LEGACY_SDK_VERSION }} SDK for $PLATFORM"
           else
             echo "version=${{ env.OPENWRT_SDK_VERSION }}" >> "$GITHUB_OUTPUT"
             echo "Using ${{ env.OPENWRT_SDK_VERSION }} SDK for IPK + APK"
-          fi
-
-          SDK_VERSION="${SDK_OVERRIDE:-${{ env.OPENWRT_SDK_VERSION }}}"
-          if [ -z "$SDK_OVERRIDE" ] && echo "${{ env.LEGACY_ONLY }}" | grep -qw "$PLATFORM"; then
-            SDK_VERSION="${{ env.OPENWRT_LEGACY_SDK_VERSION }}"
-          fi
-          if [[ "$SDK_VERSION" == 25.* ]]; then
-            echo "build_apk=yes" >> "$GITHUB_OUTPUT"
-          else
-            echo "build_apk=auto" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Pull OpenWrt SDK Docker Image
@@ -172,7 +155,7 @@ jobs:
             -e PIP_CACHE_DIR="/work/repo/.cache/pip" \
             -e ARIA2_BUILD_TESTS \
             -e UPX_ENABLED \
-            -e BUILD_APK="${{ steps.sdk.outputs.build_apk }}" \
+            -e BUILD_APK=yes \
             -e TERM=xterm \
             "ghcr.io/openwrt/sdk:${{ matrix.platform }}-V${{ steps.sdk.outputs.version }}" \
             bash /work/repo/build_scripts/build_in_sdk.sh "${{ matrix.platform }}"
