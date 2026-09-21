@@ -32,6 +32,8 @@ artifact `BUILDINFO` files):
 | spdlog | Vendored by the submodule |
 | wslay | Vendored by the submodule |
 | libtorrent-rasterbar | Vendored by the submodule |
+| GPAC | Vendored by the submodule |
+| FFmpeg | Vendored by the submodule |
 
 ## OpenWrt Packaging Surface
 
@@ -88,10 +90,11 @@ docker run --rm --user root \
   missing or failed full-matrix dispatch for the exact default-branch SHA.
 - Preserve OpenSSL `gcc-ar`, `gcc-ranlib`, and `gcc-nm` wrappers for LTO.
 - The CMake build enables OpenSSL, zlib, expat, SQLite3, libssh2, curl,
-  nghttp2, libtorrent, BitTorrent, Metalink, XML-RPC, and WebSocket support.
-  Vendored Boost provides the core Boost.Asio system resolver and libtorrent
-  headers; vendored spdlog and wslay provide logging and WebSocket framing.
-  curl uses its threaded resolver, so DNS remains asynchronous throughout.
+  nghttp2, libtorrent, GPAC, FFmpeg, BitTorrent, Metalink, native HLS/DASH,
+  XML-RPC, and WebSocket support. Vendored Boost provides the core Boost.Asio
+  system resolver and libtorrent headers; vendored spdlog and wslay provide
+  logging and WebSocket framing. curl uses its threaded resolver, so DNS
+  remains asynchronous throughout.
 - The local OpenWrt profile explicitly disables GnuTLS, nettle, GMP, libgcrypt, libuv, libxml2, jemalloc, and tcmalloc.
 
 ## Package Format Lessons

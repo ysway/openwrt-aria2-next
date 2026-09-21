@@ -42,7 +42,8 @@ else
     LEAKED=""
     for lib in \
         libssl libcrypto libssh2 libexpat libsqlite3 libz \
-        libcurl libnghttp2 libtorrent-rasterbar libwslay; do
+        libcurl libnghttp2 libtorrent-rasterbar libgpac \
+        libavformat libavcodec libswresample libavutil libwslay; do
         if echo "$NEEDED" | grep -qi "$lib"; then
             LEAKED="$LEAKED $lib"
         fi

@@ -30,7 +30,7 @@ SRC_DIR="$SOURCE_CACHE_DIR"
 VENDOR_DIR="$ARIA2_SRC/third_party"
 ensure_dir "$SRC_DIR" "$PREFIX"
 
-for vendored_dependency in nghttp2 curl libtorrent boost; do
+for vendored_dependency in nghttp2 curl libtorrent boost gpac ffmpeg; do
     if [ ! -d "$VENDOR_DIR/$vendored_dependency" ]; then
         log_fatal "Vendored dependency source is missing: $VENDOR_DIR/$vendored_dependency"
     fi
@@ -134,6 +134,159 @@ CHOST="$TARGET_HOST" AR="$TARGET_AR" RANLIB="$TARGET_RANLIB" CFLAGS="$COMMON_CFL
     ./configure --prefix="$PREFIX" --static
 make -j"$NPROC" libz.a
 make install
+
+# ── FFmpeg ──────────────────────────────────────────────────────────────────
+log_info "Building vendored FFmpeg ${FFMPEG_VERSION}"
+cd "$BUILDDIR"
+rm -rf build/ffmpeg-release
+mkdir -p build/ffmpeg-release
+cd build/ffmpeg-release
+"$VENDOR_DIR/ffmpeg/configure" \
+    --prefix="$PREFIX" \
+    --cc="${TARGET_HOST}-gcc" \
+    --cxx="${TARGET_HOST}-g++" \
+    --ar="$TARGET_AR" \
+    --ranlib="$TARGET_RANLIB" \
+    --nm="$TARGET_NM" \
+    --strip="${TARGET_HOST}-strip" \
+    --enable-cross-compile \
+    --target-os=linux \
+    --arch="$TARGET_PROCESSOR" \
+    --extra-cflags="$COMMON_CFLAGS" \
+    --extra-ldflags="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
+    --enable-pic \
+    --enable-static \
+    --disable-shared \
+    --disable-autodetect \
+    --disable-everything \
+    --disable-programs \
+    --disable-doc \
+    --disable-network \
+    --disable-x86asm \
+    --disable-version-tracking \
+    --disable-avdevice \
+    --disable-avfilter \
+    --disable-swscale \
+    --enable-avformat \
+    --enable-avcodec \
+    --enable-avutil \
+    --enable-protocol=file \
+    --enable-demuxer=mov,mpegts,aac,ac3,eac3,mp3,flac,ogg,matroska,webvtt,flv,avi,asf,mpegps,mpegvideo,srt,ass \
+    --enable-muxer=mp4,matroska,webvtt \
+    --enable-parser=aac,aac_latm,ac3,h264,hevc,av1,vp9,opus,vorbis,flac,mpegaudio \
+    --enable-decoder=aac,aac_latm,ac3,eac3,mp3,flac,opus,vorbis \
+    --enable-bsf=aac_adtstoasc,extract_extradata
+make -j"$NPROC"
+make install-libs install-headers
+
+# ── GPAC ────────────────────────────────────────────────────────────────────
+log_info "Building vendored GPAC ${GPAC_VERSION}"
+cd "$BUILDDIR"
+rm -rf build/gpac-release build/gpac-source
+# GPAC's revision helper updates a generated header in its source tree. Build
+# from a writable copy because upstream verification mounts the checkout
+# read-only.
+cp -a "$VENDOR_DIR/gpac" build/gpac-source
+mkdir -p build/gpac-release
+cd build/gpac-release
+GPAC_SOURCE_DIR="$BUILDDIR/build/gpac-source"
+GPAC_CPU="$TARGET_PROCESSOR"
+GPAC_CFLAGS="$COMMON_CFLAGS -fPIC -DPIC"
+case "$TARGET_PROCESSOR" in
+    mips|mips64)
+        GPAC_CPU=mips
+        ;;
+    mipsel|mips64el|riscv64|loongarch64)
+        # GPAC treats "mips" as big-endian and has no native names for the
+        # other little-endian OpenWrt targets. Its generic C path is portable.
+        GPAC_CPU=unknown
+        ;;
+esac
+GPAC_AR="$(basename "$TARGET_AR")"
+GPAC_AR="${GPAC_AR#"${TARGET_HOST}-"}"
+GPAC_RANLIB="$(basename "$TARGET_RANLIB")"
+GPAC_RANLIB="${GPAC_RANLIB#"${TARGET_HOST}-"}"
+GPAC_DISABLED_PACKAGES=(
+    ssl opensvc openhevc platinum freetype jpeg openjpeg png mad a52 xvid
+    faad ffmpeg freenect vorbis theora nghttp2 ngtcp2 nghttp3 oss dvb4linux
+    alsa pulseaudio jack directfb hid lzma tinygl vtb ogg sdl caption
+    mpeghdec libcaca curl
+)
+GPAC_PACKAGE_ARGS=()
+for gpac_package in "${GPAC_DISABLED_PACKAGES[@]}"; do
+    GPAC_PACKAGE_ARGS+=("--disable-$gpac_package")
+done
+CC=gcc \
+CXX=g++ \
+AR="$GPAC_AR" \
+RANLIB="$GPAC_RANLIB" \
+STRIP=strip \
+"$GPAC_SOURCE_DIR/configure" \
+    --prefix="$PREFIX" \
+    --cross-prefix="${TARGET_HOST}-" \
+    --target-os=linux \
+    --cpu="$GPAC_CPU" \
+    --extra-cflags="$GPAC_CFLAGS" \
+    --extra-ldflags="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
+    --static-build \
+    --disable-all \
+    --disable-x11 \
+    --disable-rmtws \
+    --enable-dashin \
+    --enable-parsers \
+    --enable-vtt \
+    --enable-ttxt \
+    --enable-import \
+    --enable-txtin \
+    --enable-isoff \
+    --enable-isoff-write \
+    --enable-isoff-frag \
+    --enable-threads \
+    --enable-network \
+    --enable-net-cap \
+    --enable-log \
+    --use-zlib="$PREFIX" \
+    "${GPAC_PACKAGE_ARGS[@]}"
+
+# GPAC's CPU table predates several OpenWrt 64-bit target names. Keep its
+# generated ABI header accurate when the generic C path is selected.
+case "$TARGET_PROCESSOR" in
+    x86_64|aarch64|mips64|mips64el|riscv64|loongarch64)
+        if ! grep -qx '#define GPAC_64_BITS' config.h; then
+            sed -i '/^#endif.*_GF_CONFIG_H_/i #define GPAC_64_BITS' config.h
+            grep -qx '#define GPAC_64_BITS' config.h || \
+                log_fatal "Could not mark GPAC as a 64-bit build"
+        fi
+        ;;
+esac
+
+# GPAC enables SSE2 whenever the compiler accepts the flag, even when the SDK
+# targets Pentium MMX/Pentium 4. Preserve the OpenWrt toolchain's CPU policy.
+if [ "$TARGET_PROCESSOR" = "i486" ]; then
+    sed -i 's/ -msse2//g' config.mak
+    if grep -q -- '-msse2' config.mak; then
+        log_fatal "Could not remove GPAC's unconditional SSE2 flag"
+    fi
+fi
+
+case "$TARGET_PROCESSOR" in
+    mips|mips64)
+        grep -qx '#define GPAC_BIG_ENDIAN' config.h || \
+            log_fatal "GPAC did not configure a big-endian MIPS build"
+        ;;
+    mipsel|mips64el)
+        if grep -qx '#define GPAC_BIG_ENDIAN' config.h; then
+            log_fatal "GPAC incorrectly configured little-endian MIPS as big-endian"
+        fi
+        ;;
+esac
+
+make -C src -j"$NPROC" lib
+cmake \
+    -DSOURCE="$GPAC_SOURCE_DIR" \
+    -DBINARY="$BUILDDIR/build/gpac-release" \
+    -DPREFIX="$PREFIX" \
+    -P "$ARIA2_SRC/cmake/scripts/InstallGpac.cmake"
 
 # ── expat ───────────────────────────────────────────────────────────────────
 log_info "Building expat ${EXPAT_VERSION}"

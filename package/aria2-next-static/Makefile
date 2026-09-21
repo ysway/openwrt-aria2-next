@@ -36,12 +36,12 @@ endef
 define Package/aria2-next-static/description
   aria2-next is a maintained aria2-compatible multi-protocol download
   utility operated via command line. It supports HTTP/HTTPS, SFTP, ED2K,
-  BitTorrent, and Metalink.
+  BitTorrent, Metalink, HLS, and MPEG-DASH.
 
   This package ships a statically linked binary built with Expat, SQLite,
-  OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, and libtorrent.
-  DNS is asynchronous through the core Boost.Asio system resolver and curl's
-  threaded resolver.
+  OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, libtorrent,
+  GPAC, and FFmpeg. DNS is asynchronous through the core Boost.Asio system
+  resolver and curl's threaded resolver.
   No external library dependencies are required at runtime.
 endef
 

@@ -11,7 +11,7 @@ This repository owns the OpenWrt build, packaging, service integration, release,
 ## Features
 
 - **Self-contained binaries** — target libraries are linked statically to avoid firmware package dependency conflicts
-- **Broad protocol support** — HTTP(S), SFTP, BitTorrent, Metalink, XML-RPC, WebSocket RPC, and ED2K
+- **Broad protocol support** — HTTP(S), SFTP, BitTorrent, Metalink, native HLS/MPEG-DASH media downloads, XML-RPC, WebSocket RPC, and ED2K
 - **OpenSSL backend** — TLS support with static OpenSSL, plus asynchronous DNS through the core Boost.Asio system resolver and curl's threaded resolver
 - **33 OpenWrt target architectures** — built with official OpenWrt SDK Docker images
 - **Dual package format** — `.ipk` for OPKG-based OpenWrt and standalone `.apk` for APK-based OpenWrt
@@ -225,6 +225,8 @@ Dependency versions in [`build_scripts/versions.sh`](build_scripts/versions.sh) 
 | spdlog | Vendored by the submodule | Header-only logging |
 | wslay | Vendored by the submodule | WebSocket framing |
 | libtorrent-rasterbar | Vendored by the submodule | BitTorrent engine |
+| GPAC | Vendored by the submodule | Native HLS and MPEG-DASH client |
+| FFmpeg | Vendored by the submodule | Media demuxing, stream probing, and remuxing |
 
 DNS is always asynchronous: aria2-next's core uses the Boost.Asio system resolver, while curl uses its threaded resolver. DNS servers are managed by the operating system.
 

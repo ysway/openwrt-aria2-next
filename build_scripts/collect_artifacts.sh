@@ -42,6 +42,8 @@ curl_version: $CURL_VERSION
 nghttp2_version: $NGHTTP2_VERSION
 boost_version: $BOOST_VERSION
 libtorrent_version: $LIBTORRENT_VERSION
+gpac_version: $GPAC_VERSION
+ffmpeg_version: $FFMPEG_VERSION
 spdlog_version: $SPDLOG_VERSION
 wslay_version: $WSLAY_VERSION
 upx_applied: $UPX_APPLIED
