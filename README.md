@@ -230,6 +230,8 @@ Dependency versions in [`build_scripts/versions.sh`](build_scripts/versions.sh) 
 
 DNS is always asynchronous: aria2-next's core uses the Boost.Asio system resolver, while curl uses its threaded resolver. DNS servers are managed by the operating system.
 
+The cross-build keeps whole-program LTO for aria2-next and its other static dependencies, but deliberately compiles FFmpeg without LTO. FFmpeg uses per-object ISA flags for runtime SIMD dispatch; preserving those object boundaries prevents cross-GCC from rejecting optional instructions such as NEON during the final link. Generic MIPS builds also disable incorrect Loongson/MMI autodetection. The build validates GPAC's generated ABI width against the target compiler and supplies FFmpeg's missing RISC-V syscall include when building against musl SDK headers.
+
 FTP was removed upstream in aria2-next 2.6.0. BitTorrent encryption is provided by aria2-next and libtorrent's maintained implementations. Unused GnuTLS, nettle, GMP, libgcrypt, libuv, libxml2, jemalloc, and tcmalloc paths are disabled.
 
 ## Local Development

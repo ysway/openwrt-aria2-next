@@ -141,6 +141,34 @@ cd "$BUILDDIR"
 rm -rf build/ffmpeg-release
 mkdir -p build/ffmpeg-release
 cd build/ffmpeg-release
+
+# FFmpeg applies ISA flags to individual runtime-dispatch objects (for example
+# ARM NEON). Cross-GCC LTO can lose those per-object constraints when the final
+# aria2-next executable is linked and emit instructions rejected by the target
+# assembler. Keep LTO for aria2-next and the other dependencies, but compile
+# FFmpeg as normal native objects so its dispatch boundaries remain intact.
+FFMPEG_CFLAGS="$COMMON_CFLAGS -fno-lto"
+FFMPEG_LINK_FLAGS="$COMMON_LINK_FLAGS -fno-lto"
+FFMPEG_ARCH_ARGS=()
+case "$TARGET_PROCESSOR" in
+    mips|mipsel|mips64|mips64el)
+        # Loongson extensions are not part of the generic OpenWrt MIPS
+        # baseline. Some multilib SDKs accept FFmpeg's probes but either lack
+        # the ABI macros or assemble generic objects at an older ISA level.
+        FFMPEG_ARCH_ARGS+=(
+            --disable-mmi
+            --disable-loongson2
+            --disable-loongson3
+        )
+        ;;
+    riscv64)
+        # FFmpeg 8.1.2 includes asm/hwprobe.h but not asm/unistd.h. musl does
+        # not expose __NR_riscv_hwprobe transitively, so force the include that
+        # newer FFmpeg releases use before compiling the vendored source.
+        FFMPEG_CFLAGS="$FFMPEG_CFLAGS -include asm/unistd.h"
+        ;;
+esac
+
 "$VENDOR_DIR/ffmpeg/configure" \
     --prefix="$PREFIX" \
     --cc="${TARGET_HOST}-gcc" \
@@ -152,8 +180,8 @@ cd build/ffmpeg-release
     --enable-cross-compile \
     --target-os=linux \
     --arch="$TARGET_PROCESSOR" \
-    --extra-cflags="$COMMON_CFLAGS" \
-    --extra-ldflags="$COMMON_LINK_FLAGS $EXTRA_LIBS_STRING" \
+    --extra-cflags="$FFMPEG_CFLAGS" \
+    --extra-ldflags="$FFMPEG_LINK_FLAGS $EXTRA_LIBS_STRING" \
     --enable-pic \
     --enable-static \
     --disable-shared \
@@ -175,7 +203,9 @@ cd build/ffmpeg-release
     --enable-muxer=mp4,matroska,webvtt \
     --enable-parser=aac,aac_latm,ac3,h264,hevc,av1,vp9,opus,vorbis,flac,mpegaudio \
     --enable-decoder=aac,aac_latm,ac3,eac3,mp3,flac,opus,vorbis \
-    --enable-bsf=aac_adtstoasc,extract_extradata
+    --enable-bsf=aac_adtstoasc,extract_extradata \
+    "${FFMPEG_ARCH_ARGS[@]}"
+
 make -j"$NPROC"
 make install-libs install-headers
 
@@ -248,15 +278,28 @@ STRIP=strip \
     --use-zlib="$PREFIX" \
     "${GPAC_PACKAGE_ARGS[@]}"
 
-# GPAC's CPU table predates several OpenWrt 64-bit target names. Keep its
-# generated ABI header accurate when the generic C path is selected.
-case "$TARGET_PROCESSOR" in
-    x86_64|aarch64|mips64|mips64el|riscv64|loongarch64)
+# GPAC's CPU table predates several OpenWrt target names. Derive the ABI from
+# the compiler instead, then keep its generated header consistent. Generated
+# config.h uses a bare final #endif rather than configuration.h's named guard.
+TARGET_POINTER_SIZE=$("${TARGET_HOST}-gcc" -dM -E - </dev/null | \
+    awk '$2 == "__SIZEOF_POINTER__" { print $3 }')
+case "$TARGET_POINTER_SIZE" in
+    8)
         if ! grep -qx '#define GPAC_64_BITS' config.h; then
-            sed -i '/^#endif.*_GF_CONFIG_H_/i #define GPAC_64_BITS' config.h
+            [ "$(tail -n 1 config.h)" = '#endif' ] || \
+                log_fatal "Could not locate GPAC's final config.h guard"
+            sed -i '$i#define GPAC_64_BITS' config.h
             grep -qx '#define GPAC_64_BITS' config.h || \
                 log_fatal "Could not mark GPAC as a 64-bit build"
         fi
+        ;;
+    4)
+        if grep -qx '#define GPAC_64_BITS' config.h; then
+            log_fatal "GPAC incorrectly configured a 32-bit target as 64-bit"
+        fi
+        ;;
+    *)
+        log_fatal "Could not determine target pointer size for GPAC"
         ;;
 esac
 

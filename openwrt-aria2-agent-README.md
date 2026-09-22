@@ -89,6 +89,13 @@ docker run --rm --user root \
   into shell or JavaScript source. Its build-status reconciliation retries a
   missing or failed full-matrix dispatch for the exact default-branch SHA.
 - Preserve OpenSSL `gcc-ar`, `gcc-ranlib`, and `gcc-nm` wrappers for LTO.
+- Keep FFmpeg itself out of LTO. Its runtime-dispatch objects carry different
+  ISA flags, and cross-GCC can otherwise reject optional instructions such as
+  NEON during the final generic-target link. Generic MIPS builds separately
+  disable incorrect Loongson CPU-extension and MMI autodetection.
+- Derive GPAC's 32/64-bit ABI from the target compiler rather than target-name
+  guesses. On RISC-V, keep the forced `asm/unistd.h` include that backports
+  FFmpeg's musl fix and exposes the `riscv_hwprobe` syscall number.
 - The CMake build enables OpenSSL, zlib, expat, SQLite3, libssh2, curl,
   nghttp2, libtorrent, GPAC, FFmpeg, BitTorrent, Metalink, native HLS/DASH,
   XML-RPC, and WebSocket support. Vendored Boost provides the core Boost.Asio
