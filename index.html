@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>aria2-next Static Feed for OpenWrt</title>
+  <meta name="description" content="Static aria2-next packages and raw binaries for OpenWrt, published from GitHub Actions with per-architecture package metadata.">
+  <meta name="keywords" content="OpenWrt, aria2-next, aria2, static build, ipk, apk, package feed, GitHub Pages">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6cf2'/%3E%3Cpath d='M18 19h28v8H26v6h16v8H26v12h-8z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <noscript>
+    <style>
+      .tab-section { display: block !important; }
+      .tab-buttons, .version-toggle-container { display: none !important; }
+    </style>
+  </noscript>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <section class="hero-copy">
+        <p class="eyebrow">OpenWrt Package Feed</p>
+        <h1>aria2-next Static Feed</h1>
+        <p class="lede">
+          Prebuilt static aria2-next packages for OpenWrt with native BitTorrent, Metalink, XML-RPC, asynchronous DNS,
+          ED2K, HTTPS, and SFTP support from the validated expat, SQLite, OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, and libtorrent build profile.
+        </p>
+        <div class="chip-row">
+          <span class="chip">Fully static binaries</span>
+          <span class="chip">OpenSSL backend</span>
+          <span class="chip">SFTP enabled</span>
+          <span class="chip">UPX on supported targets</span>
+          <span class="chip">GitHub Actions built</span>
+        </div>
+      </section>
+
+      <aside class="hero-card">
+        <div class="mini-stat">
+          <span class="mini-label">Version</span>
+          <!-- version-anchor -->
+          <strong id="version">2.8.3</strong>
+          <!-- end-version-anchor -->
+        </div>
+        <div class="mini-stat">
+          <span class="mini-label">Published</span>
+          <!-- date-anchor -->
+          <strong id="date">2026-09-28 09:03:15 UTC</strong>
+          <!-- end-date-anchor -->
+        </div>
+        <div class="mini-stat">
+          <span class="mini-label">Source</span>
+          <strong><a href="https://github.com/ysway/openwrt-aria2-next" target="_blank" rel="noreferrer">ysway/openwrt-aria2-next</a></strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-label">Upstream</span>
+          <strong><a href="https://github.com/AnInsomniacy/aria2-next" target="_blank" rel="noreferrer">AnInsomniacy/aria2-next</a></strong>
+        </div>
+        <button id="toggle-theme" type="button">Dark</button>
+      </aside>
+    </header>
+
+    <section class="quick-grid">
+      <article class="quick-card">
+        <h2>OPKG Feed</h2>
+        <p>OpenWrt 24.10 and older can install directly from the per-architecture feed path.</p>
+      </article>
+      <article class="quick-card">
+        <h2>Standalone APK</h2>
+        <p>OpenWrt 25.12 and newer can install the matching APK file from the Packages tab or the release page.</p>
+      </article>
+      <article class="quick-card">
+        <h2>Verified Releases</h2>
+        <p>Release assets include SHA256SUMS. Each feed directory also carries BUILDINFO and the raw aria2-next binary.</p>
+      </article>
+    </section>
+
+    <nav class="tab-buttons" aria-label="Feed sections" role="tablist">
+      <button id="btn-usage" data-section="usage" type="button" role="tab" aria-controls="usage">Usage</button>
+      <button id="btn-packages" data-section="packages" type="button" role="tab" aria-controls="packages">Packages</button>
+      <button id="btn-notes" data-section="notes" type="button" role="tab" aria-controls="notes">Build Notes</button>
+    </nav>
+
+    <main>
+      <section id="usage" class="tab-section" role="tabpanel" aria-labelledby="btn-usage">
+        <section class="notice">
+          <h2>What this feed publishes</h2>
+          <p>
+            Each target directory can contain a raw <code>aria2-next</code> binary, <code>BUILDINFO</code>,
+            an <code>.ipk</code> package for OPKG-based OpenWrt, and an <code>.apk</code> package for APK-based OpenWrt.
+          </p>
+          <p>
+            OPKG feed metadata is generated on this site today. APK files are published as standalone packages, not as a signed APK repository index.
+          </p>
+        </section>
+
+        <section class="part">
+          <h2>Quick install</h2>
+          <p>The installer detects OPKG versus APK and selects the latest asset for your package architecture.</p>
+          <pre>wget -O- https://raw.githubusercontent.com/ysway/openwrt-aria2-next/master/setup.sh | sh</pre>
+          <p class="note">Download <code>setup.sh</code> first if you prefer to inspect it before running it.</p>
+        </section>
+
+        <div class="version-toggle-container">
+          <span>Select your OpenWrt version:</span>
+          <div class="version-buttons">
+            <button class="v-btn" data-version="v24" type="button">OpenWrt 24.10 or older (OPKG feed)</button>
+            <button class="v-btn" data-version="v25" type="button">OpenWrt 25.12 or newer (APK package)</button>
+          </div>
+        </div>
+
+        <section id="v24usage">
+          <h2>Repository setup for OPKG</h2>
+          <section class="part">
+            <p>1. Detect the architecture that OpenWrt uses for package feeds:</p>
+            <pre>opkg print-architecture | awk 'NF==3 && $3~/^[0-9]+$/ {print $2}' | tail -1</pre>
+
+            <p>2. Add the matching aria2-next feed to your custom feeds file:</p>
+            <pre>echo "src/gz aria2-next-static https://ysway.github.io/openwrt-aria2-next/$(opkg print-architecture | awk 'NF==3 && $3~/^[0-9]+$/ {print $2}' | tail -1)" >> /etc/opkg/customfeeds.conf</pre>
+
+            <p>3. Refresh package indexes and install:</p>
+            <pre>opkg update
+opkg install aria2-next-static</pre>
+          </section>
+        </section>
+
+        <section id="v25usage" style="display: none;">
+          <h2>Standalone APK install</h2>
+          <section class="part">
+            <p>1. Detect the architecture that APK uses:</p>
+            <pre>cat /etc/apk/arch</pre>
+
+            <p>2. Open the matching architecture block in the Packages tab and copy the direct link to the published <code>.apk</code> file.</p>
+
+            <p>3. Download and install it locally:</p>
+            <pre>wget -O /tmp/aria2-next-static.apk &lt;download-url-from-packages-tab&gt;
+apk add --allow-untrusted /tmp/aria2-next-static.apk</pre>
+
+            <p class="note">The <code>--allow-untrusted</code> flag is intentional here because this site publishes the package file itself rather than a signed APK repository.</p>
+          </section>
+        </section>
+
+        <h2>Enable the service</h2>
+        <section class="part">
+          <p>The package ships with <code>/etc/init.d/aria2-next</code> and <code>/etc/config/aria2-next</code>.</p>
+          <p>
+            Its UCI layout follows the OpenWrt project's <code>aria2</code> package, so existing
+            OpenWrt-style settings and multi-instance <code>config aria2</code> sections can be reused after copying them to <code>/etc/config/aria2-next</code>.
+          </p>
+          <pre>mkdir -p /mnt/data/downloads
+chown aria2:aria2 /mnt/data/downloads
+uci set aria2-next.main.enabled='1'
+uci set aria2-next.main.dir='/mnt/data/downloads'
+uci set aria2-next.main.rpc_auth_method='token'
+uci set aria2-next.main.rpc_secret='replace-with-a-long-random-secret'
+uci commit aria2-next
+service aria2-next enable
+service aria2-next start</pre>
+        </section>
+
+        <section class="tips">
+          <h2>Default runtime behavior</h2>
+          <ul>
+            <li>RPC listens on port <code>6800</code>.</li>
+            <li>Downloads go to <code>/mnt/sda1/aria2-next</code> by default.</li>
+            <li>Rendered configs, session state, and DHT state live under <code>/var/etc/aria2-next</code>.</li>
+            <li>BitTorrent Local Peer Discovery and DHT are enabled by default.</li>
+          </ul>
+        </section>
+      </section>
+
+      <section id="packages" class="tab-section" role="tabpanel" aria-labelledby="btn-packages" style="display: none;">
+        <section class="important">
+          <p>Pick the files that match your device architecture.</p>
+          <p>Use <code>.ipk</code> for OpenWrt 24.10 and older. Use <code>.apk</code> for OpenWrt 25.12 and newer.</p>
+          <p>The raw <code>aria2-next</code> binary and <code>BUILDINFO</code> file are published alongside the packages for manual deployment and verification.</p>
+        </section>
+
+        <label class="filter-control" for="architecture-filter">
+          <span>Filter architectures</span>
+          <input id="architecture-filter" type="search" inputmode="search" placeholder="Try x86_64, aarch64, mips…" autocomplete="off">
+        </label>
+        <p id="architecture-empty" class="notice filter-empty" hidden>No matching architecture is published in this feed.</p>
+
+        <!-- arch-section-anchor -->
+<details class="arch-section" data-architecture="aarch64_cortex-a53">
+    <summary>aarch64_cortex-a53</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="aarch64_cortex-a53/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">762cb9bc9e1881047419186d1e2d5bd5e73412230e05f0dac6e1fc1b3638ed85</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a53/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">eeb8e8da039220b80a82081f853b907e8ba9dc5c3bb70861b933ad8046ea6ec1</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a53/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">66acf10109e9402c2763de764a4f7f56aa72f04111adabcdfb27d7daec1558a4</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a53/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">c21af1247ceca4d1d86d90289cf98a5fbb7052e7751108642d40eeb3935e11c9</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a53/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">bb8acf472297674384186daee94691fa7245552ac01f0cd4d1ff7bd82228f69b</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a53/aria2-next-static_2.8.3-1_aarch64_cortex-a53.ipk">aria2-next-static_2.8.3-1_aarch64_cortex-a53.ipk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">f26f18efff3a9a3773468e87dfcda939168a5b4a4a127696f6194c7b415c6ce1</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="aarch64_cortex-a72">
+    <summary>aarch64_cortex-a72</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="aarch64_cortex-a72/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">358288f38089f27aba1f912e017d59bda76ab499126f84a6e2b8c1181e0d7219</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a72/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">9e603cb9057c10e67638986f1536f61057cfa3536accb6b7ca81fda39f4dac64</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a72/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">590a700de8f61492228ab21752650b23da82ed61a203cf6d405c80a475751b60</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a72/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">b10aded553c1d6b74317a7cf0676b920d6704927e19f2e95b20c0fc2b060ed03</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a72/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">c20b36b5cec2912b09bb55db8bdfce30578451f1f01c0f1370bb07bc94fc6e90</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a72/aria2-next-static_2.8.3-1_aarch64_cortex-a72.ipk">aria2-next-static_2.8.3-1_aarch64_cortex-a72.ipk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">d9d83cb865ef15032b8fe7fd5298501c721cc3b745ad7bf761e8c6f0fe186b2a</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="aarch64_cortex-a76">
+    <summary>aarch64_cortex-a76</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="aarch64_cortex-a76/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">6af3764d36e0cea85a824648baff1891dae9dda9dd7abf356be5e5ff9eae63af</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a76/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">160fddee0ec1afec65c755717d2ccc78128a68683a3154cdd6e7c1f8b6c71d39</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a76/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">233cac73b76e486687f7fc66bbf5ba1e91d95b9000009c9004834bf33eced9c0</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a76/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">b10aded553c1d6b74317a7cf0676b920d6704927e19f2e95b20c0fc2b060ed03</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a76/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">00854fff8968081207f0d9563d5e2d2b1fb3da7fe004d554333db4ef52dc3d89</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_cortex-a76/aria2-next-static_2.8.3-1_aarch64_cortex-a76.ipk">aria2-next-static_2.8.3-1_aarch64_cortex-a76.ipk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">3eac7f0918c6659922ab8f10bde1cc37b7da2e52ec52151c77c2151b79bef7c8</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="aarch64_generic">
+    <summary>aarch64_generic</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="aarch64_generic/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">23c5773910ea1e4a1da81e3483fb039e87ffec2283839d78b21b1660367a0a08</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_generic/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">89069b7174f477e3e7be2cb7dfd3520a275378255b888f977511b8483a4a8776</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_generic/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">8f066ea5d856a798c8f7eb3bac28baa0f3911924cde8b118fc73ee9f32511123</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_generic/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">122b86eb007cd2de5dfe3e8e2719e242c942c4b1fcc5c9fb214d2874e94ef53e</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_generic/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">efd3643e8be517f1ec8da1dcb8e2407e18249fd692a07f3cb7c53bce0446fcce</td>
+            </tr>
+            <tr>
+                <td><a href="aarch64_generic/aria2-next-static_2.8.3-1_aarch64_generic.ipk">aria2-next-static_2.8.3-1_aarch64_generic.ipk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">9bf2e636be4a396abf371d4042336749270615eb0c91f03e8c7fca88d2e024d8</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_arm1176jzf-s_vfp">
+    <summary>arm_arm1176jzf-s_vfp</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_arm1176jzf-s_vfp/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">8520df7e914924091f0e7f4ea912e715cb0ab8666229addb15f85859ea59209f</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm1176jzf-s_vfp/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">a0d095f5749e70a220f8eea18efe81f8242ae1433228ff4e606f7aad1bafd509</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm1176jzf-s_vfp/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">c910b627f7e9a6ff30332fe53257c218bdb5ea0c916464084434fe278f6a460c</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm1176jzf-s_vfp/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">b0d52d4d165fcaf76542f523edc3a13ec4d1bb6696208cd4d9d2a909744a6cba</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm1176jzf-s_vfp/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">90e165f82066b78ad3db2d4e483689a0fc39f87ed928f39f8d8541ce5b8ab6c9</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm1176jzf-s_vfp/aria2-next-static_2.8.3-1_arm_arm1176jzf-s_vfp.ipk">aria2-next-static_2.8.3-1_arm_arm1176jzf-s_vfp.ipk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">b806854f3d1022e64588f047a3da4b56a6b711ecfdb804e427c119e3e57d6b30</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_arm926ej-s">
+    <summary>arm_arm926ej-s</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_arm926ej-s/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">282e132a7f860a9225c51edf0f90c656d4059bc26ee91cc0fafb78c80c16c340</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm926ej-s/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">a0b4519fe0c602dfaefe611a5c4a0dff6ff71683402cdb2a04d9546e4856062c</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm926ej-s/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">8b3fb4f175ffcabf60e8a27c1cce2323de390e427ac2ee43a29654f473455e40</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm926ej-s/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">0d6499c676c98f957735900f275a57d62e29e2064143c75a925b1e2daeb9ae3c</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm926ej-s/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">ffdb3ab1f7e4ddf2f4bbea89832be17b75e193f1cc7b96add7c5c6f98cf58379</td>
+            </tr>
+            <tr>
+                <td><a href="arm_arm926ej-s/aria2-next-static_2.8.3-1_arm_arm926ej-s.ipk">aria2-next-static_2.8.3-1_arm_arm926ej-s.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">c52b296ef0204e94dd03e98547abfea796bacf1482394466adbc48c2d1a9f381</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a15_neon-vfpv4">
+    <summary>arm_cortex-a15_neon-vfpv4</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a15_neon-vfpv4/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">c7932afa19f694ceaa9f79a0645d1cc591c5320187e0a9892d10811607e0bfa7</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a15_neon-vfpv4/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">2ac869ce6b54b558d3c28d45ecc07c1d9bfbdc28b813e1e000f69ed1e00601e7</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a15_neon-vfpv4/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">b833702f73f5f78145f8ce35409878b3512ed51fef41e60a8c66bcdfa25b5f67</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a15_neon-vfpv4/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">9bcb7311af3d5b708a41e5388b6aaffcb35cf63e817fcb50d0fc43395814d1c6</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a15_neon-vfpv4/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">da1e5b31cc1b8fede1748192dd84ee57b774c31d37775af279043884fe77ad10</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a15_neon-vfpv4/aria2-next-static_2.8.3-1_arm_cortex-a15_neon-vfpv4.ipk">aria2-next-static_2.8.3-1_arm_cortex-a15_neon-vfpv4.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">3072ddd093fad6142ac23fc3352125a081c687e1e967eda71f5a8edc8beb75ec</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a5_vfpv4">
+    <summary>arm_cortex-a5_vfpv4</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a5_vfpv4/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">eefb11708f4db4b4a8c764c97d1a4a1321858ddd7ede396beffdd47e848231cd</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a5_vfpv4/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">64bc20f5d79fa15c774434d9f11a3eb6b60c397f13e9133c536cb5fa21b9e914</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a5_vfpv4/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">4bd71e1befd67e2702339649a5e88be99473240c34e7da07dda0e5f2f74513c9</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a5_vfpv4/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">729527431ae823adeba499ec206a5b32c1f643fb99201604bc3979dc3620cc70</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a5_vfpv4/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">a57e9f8ebb8baaab2621879d826d2ece490437b87f1c649d6b69d0329f6cf936</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a5_vfpv4/aria2-next-static_2.8.3-1_arm_cortex-a5_vfpv4.ipk">aria2-next-static_2.8.3-1_arm_cortex-a5_vfpv4.ipk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">0cb46c321de8d9af947181f98dd923d078916ffcdce45784f417d23f6ac008d0</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a7">
+    <summary>arm_cortex-a7</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a7/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">56555ebfa9fcb4a2fe4e62eda1ab7d406147fc14e46a5f31806e85541b3a215f</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">135b9d43cf111c13fa7d2225e3469927fae2d4863693eac2063ad1c57207f2e0</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">7831d0e194762e2d88acb09c4f8bf3c3d1cbb7af814544aea3b3cb07c6ed53ee</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">fd0a06824d1a95bcc665ed276bd3fdec6d218a1629f724ab9eb2b084d2cbb6a5</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">53e861ae79f45ca86c21d590348e434dbccc54cb88ca2293740d2e63cf9b1a37</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7/aria2-next-static_2.8.3-1_arm_cortex-a7.ipk">aria2-next-static_2.8.3-1_arm_cortex-a7.ipk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">1ec984027256a449ed764b21438d903d0e162d4e5c203499b82c9e5c9e57a04e</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a7_neon-vfpv4">
+    <summary>arm_cortex-a7_neon-vfpv4</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a7_neon-vfpv4/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">29068691dcc09ad42d5e843b2ac2e19b60e9db14bc1a0a479bfd95cfba0b86cf</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_neon-vfpv4/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">c614cce39a77f76e38d87b368b44e539729dae45c5d3a5d0abef18afd9542d7e</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_neon-vfpv4/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">4e375f50c5fa6981842395392f4b7aa8538250af87d4deb42ff14563bbbe9719</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_neon-vfpv4/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">8510c493ad808d34559ae1b17b9da9dccafd7034c06c6c71c290e48ce57f3bae</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_neon-vfpv4/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">cba14938b2cb08329dac649f6c0366ba71836c5ddedbba36647e6da97042e0ba</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_neon-vfpv4/aria2-next-static_2.8.3-1_arm_cortex-a7_neon-vfpv4.ipk">aria2-next-static_2.8.3-1_arm_cortex-a7_neon-vfpv4.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">d515d830091a15687ae16e01227d5cff46a6c600f54eae4065602c25ec96eab8</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a7_vfpv4">
+    <summary>arm_cortex-a7_vfpv4</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a7_vfpv4/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">978389f6791a39e16201ea467a0adce398d70c6e31aed5c5838d19ceb0c46c85</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_vfpv4/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">c4ac2947bd79ddbb4d5059d4b41b7b518fefdd7a0a1384e519ebeb17b13437a2</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_vfpv4/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">e8c392bfb0c9bd9bdd92c4e96b9b592fd86e00462ee050d009954c0e4c697670</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_vfpv4/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">fc3738ad6b1446322a064e1816606fd1fe0bd169cc197044e8549d139bbf3132</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_vfpv4/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">9eb1d167d2bf80b9aa221c167e6b8a016fdf478e70cabefbce14b1cca59b7a03</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a7_vfpv4/aria2-next-static_2.8.3-1_arm_cortex-a7_vfpv4.ipk">aria2-next-static_2.8.3-1_arm_cortex-a7_vfpv4.ipk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">9b5505e0aa6dd59de181e77fea06ee6337ee836b91facc602fff22c4903b1cc6</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a8_vfpv3">
+    <summary>arm_cortex-a8_vfpv3</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a8_vfpv3/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">5af892152ac94812a8e71110dda31403aa543899b87b2217507b7842a778ce92</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a8_vfpv3/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">5b568dc45fe3c576149933b2eed9b7b31295223fe454dee8447909fe97d241da</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a8_vfpv3/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">1870daa33f0c6a6eb1c0a6c16c7775e96bf6557303d2c91018ea4e6449534037</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a8_vfpv3/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">1901cb2b8fb52b72dd66b4d73d02490df6bf0b73ce4c21611d877885b4b1f344</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a8_vfpv3/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">0e41e3cefc36aee52d848d94623b1a94ee514fd88706cea843327bef86f77e68</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a8_vfpv3/aria2-next-static_2.8.3-1_arm_cortex-a8_vfpv3.ipk">aria2-next-static_2.8.3-1_arm_cortex-a8_vfpv3.ipk</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">40a2779d6b2f204f22097390f89361e41a2b00d393e0ef567780c65647dabe24</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a9">
+    <summary>arm_cortex-a9</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a9/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">f0408cf7aac6d5fbfca630338fd3a3addf2c5301147dd813783454de4dd3f6a2</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">912105c370135e4a1716bbeba5632259496f7ec735f96e6b63dd4ff530a7f544</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">324ae3675b5336cc84aa48dd26dfd345a9948d02beaf9f5d570f98584eaac983</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">d3c4504d554bff7e416b775ee0402411350c1220f66119b2e7fdaebd3d5c8e0e</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">7647dd4fdd719e4dbe83d40166d94efc51a0c1d004c073bc872d527a5df83a79</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9/aria2-next-static_2.8.3-1_arm_cortex-a9.ipk">aria2-next-static_2.8.3-1_arm_cortex-a9.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">db1afc248df780974a898803146391793675ffa7f837e897be54fc71e9b506d9</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a9_neon">
+    <summary>arm_cortex-a9_neon</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a9_neon/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">90467ed21c69434b290092ce70d1258f165eb32f0037e80058cf4e8d05cda836</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_neon/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">4296594e676dbffb897f32bc04ef433b75514e6d4601c571f564a6d69036722a</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_neon/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">d900665651654743f29060043a45a31ca627945450a9907e3b218460355a1b10</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_neon/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">1db0d94d91bf7c4d32703a23304e7a7369a9869998af43c9ddb402a2dba5fd7f</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_neon/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">ef92b234b7a3fecec6a49be3f485f3632a2519d814e72c563ad0b7a158056fc9</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_neon/aria2-next-static_2.8.3-1_arm_cortex-a9_neon.ipk">aria2-next-static_2.8.3-1_arm_cortex-a9_neon.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">2cd47c165a906baee81e1cdc74dadf1c9d62ebf51d0a114a70eb1ddd2a7b5c02</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_cortex-a9_vfpv3-d16">
+    <summary>arm_cortex-a9_vfpv3-d16</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_cortex-a9_vfpv3-d16/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">f64fba4daeaa6aa5775d1117d2d995cb231f4ba110af22b772432bb5add5dd55</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_vfpv3-d16/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">1aa69be677f2b488d3c1a711b19f1b67f6228a6ebccdee694c7b204a0e56ec31</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_vfpv3-d16/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">837ef2742f805eb60946183a860031f4818cd41dfed899d2128789fd779b7cfe</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_vfpv3-d16/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.4M</td>
+                <td class="sha256-cell">c995906239eb3d2267cc52211efb0310f688de2eb182fb50585a7b8d90ae4f3f</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_vfpv3-d16/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">f10ad060a55a4587ed33becd3b4d9768ba6cda9d0536a9742751a09ea38681b1</td>
+            </tr>
+            <tr>
+                <td><a href="arm_cortex-a9_vfpv3-d16/aria2-next-static_2.8.3-1_arm_cortex-a9_vfpv3-d16.ipk">aria2-next-static_2.8.3-1_arm_cortex-a9_vfpv3-d16.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">03ba40f36626979900de96d4beb03b4bb6cac1fa8b3e7f5113230b375de2a640</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_fa526">
+    <summary>arm_fa526</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_fa526/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">191d2118f7abfca51f9ea5216ec45408794889276d902c9a97d2919ce330712c</td>
+            </tr>
+            <tr>
+                <td><a href="arm_fa526/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">a47f1e794daec7f6b5ea51e99a05eca54be371c4654d7be6873dabd603cf1a3b</td>
+            </tr>
+            <tr>
+                <td><a href="arm_fa526/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">88cc8ff888fc4a6581f23008183a9c31cee5eb160b8fde9ba227da460ef2eac3</td>
+            </tr>
+            <tr>
+                <td><a href="arm_fa526/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">6b4be1bea5285125b718a0f65540fe52c2e5f8d8f69b0011792c380f47cd2904</td>
+            </tr>
+            <tr>
+                <td><a href="arm_fa526/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">24a6ac4f2293e22f83209336dd0c7eaea611d72542a4ef29d9c4bfdfd8540fd4</td>
+            </tr>
+            <tr>
+                <td><a href="arm_fa526/aria2-next-static_2.8.3-1_arm_fa526.ipk">aria2-next-static_2.8.3-1_arm_fa526.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">cf01656cb841995f2ed9bdd6c656e7e265035e4a57265e210634858afb05f990</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="arm_xscale">
+    <summary>arm_xscale</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="arm_xscale/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">e939b178af316cf339cae3230f1ce99a6955e3c69c5d19fe9ef2696c061c1ac9</td>
+            </tr>
+            <tr>
+                <td><a href="arm_xscale/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">6f4c5c13c15a8d8c5c422b10d12ebe4e906b59e4bc6aa81417a5d8a64a1cef40</td>
+            </tr>
+            <tr>
+                <td><a href="arm_xscale/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">e1e4572950efa71e5841622707fb3049dcfe7ef3f71abe3da416ec2f709b1b64</td>
+            </tr>
+            <tr>
+                <td><a href="arm_xscale/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">08c149680cb84d064aa9607a0863617d73b648e812c225561876619cb2b07d08</td>
+            </tr>
+            <tr>
+                <td><a href="arm_xscale/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">238d5bef7a5c55f8d19fb01b3ecd4c6b47aa529991c2511288cb76e5e79936f9</td>
+            </tr>
+            <tr>
+                <td><a href="arm_xscale/aria2-next-static_2.8.3-1_arm_xscale.ipk">aria2-next-static_2.8.3-1_arm_xscale.ipk</a></td>
+                <td class="size-cell">4.5M</td>
+                <td class="sha256-cell">efbc13582b0c00ac8361f8f1b5deebf87ca318f57e05b5f0eed1ebd7c8c955e8</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="i386_pentium-mmx">
+    <summary>i386_pentium-mmx</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="i386_pentium-mmx/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">6e0ec34672133c19b7483011a5697ba60216f834900b0abf9071a49441526731</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium-mmx/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">86b642b45faba30e02381c54e6e11f8280704686e24693e9160ab8595741e42a</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium-mmx/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">42e15ca40df8afc6c1bd67a51ba9b5320131efbbc3beab6b7ca8e5a826931ce3</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium-mmx/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">b9d47677987a77b586f75b23f325f03a412d1ffbd053cc60ed9d9efddeca5a1d</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium-mmx/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">8e0bf8f80a3a9e4f4d0a9a100aa9901d1298e92f87364b12caa39e1c91138e1e</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium-mmx/aria2-next-static_2.8.3-1_i386_pentium-mmx.ipk">aria2-next-static_2.8.3-1_i386_pentium-mmx.ipk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">3b3076e5409e8089b233c60ba002796b851cbebf80a3956cd1104193d3ebd9bd</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="i386_pentium4">
+    <summary>i386_pentium4</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="i386_pentium4/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">e42a529d671fb955a945dc81e37cff61bdc75b2fd01c0cb7b3966814cdf4d907</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium4/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">3ef0b87c8c65d1d58dfa9da4465d9ba8e3d3d893007da93351b902dad68c1a7d</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium4/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">ee25c370626083ebaed18df97dffade867079f5ee9ae3b573f88d00db40ad317</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium4/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">df224ba0fac2b470e97afd1bdcd9539877448765660eda85eb9f8fd8efd8d9da</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium4/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">395c7672be11734674b70a4cecaf01dce0f6a44f6b7f4ba19ddba9bd0653d5f8</td>
+            </tr>
+            <tr>
+                <td><a href="i386_pentium4/aria2-next-static_2.8.3-1_i386_pentium4.ipk">aria2-next-static_2.8.3-1_i386_pentium4.ipk</a></td>
+                <td class="size-cell">5.5M</td>
+                <td class="sha256-cell">39dfaa2ef43a11b85287d049397e0e13a30c20c8e88bd4095f5e192d37da3bf7</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="loongarch64_generic">
+    <summary>loongarch64_generic</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="loongarch64_generic/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">9b3d68d6d97d2e39e7c28bc1c3e7490ce4d3d05e1949bade723b7e83f3661870</td>
+            </tr>
+            <tr>
+                <td><a href="loongarch64_generic/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">9d026d10c0eefc2ccf1c341542f799f216aed8d1a1d293228322966530f0b75d</td>
+            </tr>
+            <tr>
+                <td><a href="loongarch64_generic/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">17b481e99ee8358ba9d692a986ba23b2c9e3d7690c8476e2b811412ad6ec9176</td>
+            </tr>
+            <tr>
+                <td><a href="loongarch64_generic/aria2-next">aria2-next</a></td>
+                <td class="size-cell">16M</td>
+                <td class="sha256-cell">7d87aba0eefa43e67cf3dd1637aa01615e6312a28790a9ea0921691b085f1c38</td>
+            </tr>
+            <tr>
+                <td><a href="loongarch64_generic/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">04ef47dd31a527c44acee81fc4e46f32f7fcd62561bebccefaf29c066e406c0c</td>
+            </tr>
+            <tr>
+                <td><a href="loongarch64_generic/aria2-next-static_2.8.3-1_loongarch64_generic.ipk">aria2-next-static_2.8.3-1_loongarch64_generic.ipk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">23fbb5df7c6582894c53122bef934228ae70810fc426fd1bb0c9d8d650730feb</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mips64_mips64r2">
+    <summary>mips64_mips64r2</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mips64_mips64r2/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">f7e46efbb09943e1416dad7668bdd4aa1eb9fdcaa654da2b09260a465871717b</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_mips64r2/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">c2b04752bc49ab5eb4fee3279709d71290c0c00bda7ac90b8f1a5d884cb1cae6</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_mips64r2/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">ad7d871e8b225c36778846f09885cdc30effac4fe2954ad0502192690e92ae25</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_mips64r2/aria2-next">aria2-next</a></td>
+                <td class="size-cell">18M</td>
+                <td class="sha256-cell">88327170a23f18eea9b8bc5d32667a67fdfd542c740bfe5ec42679862898bfb2</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_mips64r2/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">4463020fc541b916a00fa41bedcd4719ad2cbed82f1485b228983580bfbd38cf</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_mips64r2/aria2-next-static_2.8.3-1_mips64_mips64r2.ipk">aria2-next-static_2.8.3-1_mips64_mips64r2.ipk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">5c7abb6e8633601573684d02db0b722d8c31ce511b3a4211b1baac5e6205a6ba</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mips64_octeonplus">
+    <summary>mips64_octeonplus</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mips64_octeonplus/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">3904a2aa108011ae6fe879e6324bb293962c5c69e0126fecaac5c0198a63a6cd</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_octeonplus/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">707fb23c45599a4ca0051968c208116a3b64b5a019c2b822ce7a2f51c5a4ac21</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_octeonplus/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">3b02e83dac2deec865cf01e9becb5a68f17f8785c4c865bb5687c65ad5279a96</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_octeonplus/aria2-next">aria2-next</a></td>
+                <td class="size-cell">18M</td>
+                <td class="sha256-cell">1592530d20b47d67c681d074742efae5a3b1857394b1b7f73508bd736eb579c1</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_octeonplus/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">3fea84a4727c94b476dbcfc497fbc8c534ebcda5383b74b495913c80638e62c6</td>
+            </tr>
+            <tr>
+                <td><a href="mips64_octeonplus/aria2-next-static_2.8.3-1_mips64_octeonplus.ipk">aria2-next-static_2.8.3-1_mips64_octeonplus.ipk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">837acea8f0f4e65c2158ab58e26cd6bc9d0f7fcbefdb5333a7ae57740e3d2ba4</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mips64el_mips64r2">
+    <summary>mips64el_mips64r2</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mips64el_mips64r2/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">5c3e5d75cc500f83d84584476a3156d9a9424ab2b1a89fb6d88a25b97ce03db5</td>
+            </tr>
+            <tr>
+                <td><a href="mips64el_mips64r2/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">9157a73a758d44448091f5aec6386ade4b3e1979daa95d191d61a9a651a15eac</td>
+            </tr>
+            <tr>
+                <td><a href="mips64el_mips64r2/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">657a83d45a1eaf1c4158561a15513c46b5d8f0d0763f9a53bbbe64ca92e66d29</td>
+            </tr>
+            <tr>
+                <td><a href="mips64el_mips64r2/aria2-next">aria2-next</a></td>
+                <td class="size-cell">18M</td>
+                <td class="sha256-cell">1cecb3bbac19f19c929651694babc86eccc4159059781e3cedfbeb89e159e918</td>
+            </tr>
+            <tr>
+                <td><a href="mips64el_mips64r2/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">e2f40173f52c7797471be55d115104f9dd11f6572e7b9e0a7f4ff2b062307025</td>
+            </tr>
+            <tr>
+                <td><a href="mips64el_mips64r2/aria2-next-static_2.8.3-1_mips64el_mips64r2.ipk">aria2-next-static_2.8.3-1_mips64el_mips64r2.ipk</a></td>
+                <td class="size-cell">7.2M</td>
+                <td class="sha256-cell">5de3d4334c7680d5f596083224b18c776ededa63904a4bd3ddf00f868bb6c108</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mips_24kc">
+    <summary>mips_24kc</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mips_24kc/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">2094b778331e07ae5dd32cdea04f4dffd4ee08a5aa12a8d6b9626e14acbfbb3f</td>
+            </tr>
+            <tr>
+                <td><a href="mips_24kc/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">de7b39f2e1d4bb9abc65ebfd55cd016944033c690f143b7801a34bb06d5e6674</td>
+            </tr>
+            <tr>
+                <td><a href="mips_24kc/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">72f13ad9b3741e417d1da4b7d665bc24741969cf74ab47e470eb9f19394645db</td>
+            </tr>
+            <tr>
+                <td><a href="mips_24kc/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">47f74bf8447a1ab5214c86dc6d0751e7ba049818b688d22aa49f1976f68f6370</td>
+            </tr>
+            <tr>
+                <td><a href="mips_24kc/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">23fc5c83f243d1d44e77aa6d080de27f4d79f14a340b9344b37a6f1a044e5c4f</td>
+            </tr>
+            <tr>
+                <td><a href="mips_24kc/aria2-next-static_2.8.3-1_mips_24kc.ipk">aria2-next-static_2.8.3-1_mips_24kc.ipk</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">249280cf0808f3f5e4fc3aa9c7c81316db0ba05149ca21fef800c55fc14f8680</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mips_mips32">
+    <summary>mips_mips32</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mips_mips32/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">8eab09f37aa2256ef47f1608a3428d2323863fc23022b54eaaeafc53a3253bd3</td>
+            </tr>
+            <tr>
+                <td><a href="mips_mips32/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">5f5ece056b3054f21e1755edd5759dc9c6e0833d55484929fb0fccaf20bd91d4</td>
+            </tr>
+            <tr>
+                <td><a href="mips_mips32/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">a1a1ffb643a3ee331caea431ec28ba7b6ecaa7cbb94176b11b2b8b60d52c6c09</td>
+            </tr>
+            <tr>
+                <td><a href="mips_mips32/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">b4538d06dd524909d0a07c2a03ec95232dd6a9a48af1f6d1d17a6e51daef7b3f</td>
+            </tr>
+            <tr>
+                <td><a href="mips_mips32/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">fdd0e4953d7e5af1b47c9942a370b01d5704c6d3a897d62e94ae9c1799d7b6c4</td>
+            </tr>
+            <tr>
+                <td><a href="mips_mips32/aria2-next-static_2.8.3-1_mips_mips32.ipk">aria2-next-static_2.8.3-1_mips_mips32.ipk</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">b002b674963e51a3bbd6f2e0bfa4aff18ccf62880574b6a61f5c147170229c78</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mipsel_24kc">
+    <summary>mipsel_24kc</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mipsel_24kc/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">622e51c98198028059d4024226515c4131ccf07362e0aa51a5e12b243f538da3</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">1b699cc86b9a612322ef305e9eab04c42084989494e6940f6f09390eefac3f61</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">11fd3770512df8c438c4ec4782af3bf57d1f8ac8b32cf8f33d6fe3b8c0ae17fe</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">9d4596c58c95a4b7031954ab2946e1911906c636d6dc81f25ec538573faba9a1</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">de5cb399236a78494c293072e3ddca5a7e6164971ce99e4cad4a240bf96a9fa2</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc/aria2-next-static_2.8.3-1_mipsel_24kc.ipk">aria2-next-static_2.8.3-1_mipsel_24kc.ipk</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">b3cfb6f31b06f0f88094a83e5dc57cc1c09cbeaf8c67a17819d0c7ffb9a3da45</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mipsel_24kc_24kf">
+    <summary>mipsel_24kc_24kf</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mipsel_24kc_24kf/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">66d4859c0aeb36086c76f4411ef0ebd62db0687027b189b9e4be3a3e85a9bf16</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc_24kf/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">3baf4d0978c4088ff6703a3170a9bb64ba718d7cd16b2adf86230ccd51dde69a</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc_24kf/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">54594874b86acf76e7349fb88eb3f87530a83a945027e15cb478d01d797cbd4c</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc_24kf/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">9724baa88c5b18b8c6c7d91ba036b50cd598f3f25c373c2dd8b6cd4422f84d02</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc_24kf/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">0e8e71e589cb2ea9838adb76275116759ccfa521ae736960d9f879518bbb611b</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_24kc_24kf/aria2-next-static_2.8.3-1_mipsel_24kc_24kf.ipk">aria2-next-static_2.8.3-1_mipsel_24kc_24kf.ipk</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">e58181b18b2ee23f4c897f14167925742db40a3e2c78177a12bce3556a472de7</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mipsel_74kc">
+    <summary>mipsel_74kc</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mipsel_74kc/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">1225fee4c609741f7f570c9ee4a1c8ca5f2be6f58b3c276aa410fcd627f3f154</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_74kc/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">7f78c3e7c58f303e75697ad1299439b59c14e55de308e0c61020ff642eb7bdf0</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_74kc/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">a9389dffa91144c510655f9e38887bf557b04c0b97a33e506ea24c51deebfbb3</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_74kc/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">4f01f9c8a5aaf39905e5b1a03b4e58da030a1b689e0002fa23b1522f94c332b0</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_74kc/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">8ce9faafc525a6cd92c02c6df61a6748ed7aa5ac3cbef9bbafd897038beeebd1</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_74kc/aria2-next-static_2.8.3-1_mipsel_74kc.ipk">aria2-next-static_2.8.3-1_mipsel_74kc.ipk</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">d8315d305604100781a1f94c8901608c66117787b9b4feea7b364a1f8beb995e</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="mipsel_mips32">
+    <summary>mipsel_mips32</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="mipsel_mips32/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">0bf4b47b88abf3d37cf4df72ae5c263da8ef9291d2cf4596cb01fb32143b9750</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_mips32/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">8036f0ec3fac69a127c5c9bb821a3edbf9e55e0ff5d6dd6030e7fa94298042ca</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_mips32/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">4cc5b05405b8e61c3080b61ca75fd63f34afe783aa4c24a7f717fc308a4e308e</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_mips32/aria2-next">aria2-next</a></td>
+                <td class="size-cell">4.9M</td>
+                <td class="sha256-cell">8a4628d7acfdb0b1895099208d9f941583e8fb0400acbddd3c8b62a1be8a63dc</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_mips32/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">f6581052c01ebfeb0f64f6209e530368da364b7e932dc9b42033bca532bd07a3</td>
+            </tr>
+            <tr>
+                <td><a href="mipsel_mips32/aria2-next-static_2.8.3-1_mipsel_mips32.ipk">aria2-next-static_2.8.3-1_mipsel_mips32.ipk</a></td>
+                <td class="size-cell">5.0M</td>
+                <td class="sha256-cell">270d16487240ffc68e8f2f8c39ce085626e2888241dd403a45beb15f11baa4a7</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="riscv64_generic">
+    <summary>riscv64_generic</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="riscv64_generic/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">8d8a07ca30d8d2598065fe1390eb64e0b7b103e87616a75fa5ce627b3dbaf819</td>
+            </tr>
+            <tr>
+                <td><a href="riscv64_generic/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">52266e9f2c1f85c8828e02bd09cba98701bb12d7b84f06d3d38db2def6f967b4</td>
+            </tr>
+            <tr>
+                <td><a href="riscv64_generic/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">45f5c9571b71fa094bd05be276f17e359e911e0938c058330f422d42501ab75e</td>
+            </tr>
+            <tr>
+                <td><a href="riscv64_generic/aria2-next">aria2-next</a></td>
+                <td class="size-cell">13M</td>
+                <td class="sha256-cell">c74af28d63ed8cb73be7bcbc4746685b3dd67b371d187f39fb2fc348ccc17f7a</td>
+            </tr>
+            <tr>
+                <td><a href="riscv64_generic/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">7.1M</td>
+                <td class="sha256-cell">fc1564836f46945aa925b84982e8cdea52b2fb154af4d36383d02af2f08c53e2</td>
+            </tr>
+            <tr>
+                <td><a href="riscv64_generic/aria2-next-static_2.8.3-1_riscv64_generic.ipk">aria2-next-static_2.8.3-1_riscv64_generic.ipk</a></td>
+                <td class="size-cell">7.1M</td>
+                <td class="sha256-cell">8a7b1dec110725adf7ccff2f1f8b211f458bd6bc3118c05631180ad8374c12c6</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+<details class="arch-section" data-architecture="x86_64">
+    <summary>x86_64</summary>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Size</th><th>SHA-256</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="x86_64/BUILDINFO">BUILDINFO</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">4ed96168e6f205bc67d55144a604cab126d8b868d40d59753561cb5b974d7c9c</td>
+            </tr>
+            <tr>
+                <td><a href="x86_64/Packages">Packages</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">ef604015ba04980edcbc0170fe412e60bf35173a5581447a2e09bdb892d2dc48</td>
+            </tr>
+            <tr>
+                <td><a href="x86_64/Packages.gz">Packages.gz</a></td>
+                <td class="size-cell">4.0K</td>
+                <td class="sha256-cell">a61b00fdf0b9ed08e827076d3ab8d42695daeb70925d62bc64138617ec334969</td>
+            </tr>
+            <tr>
+                <td><a href="x86_64/aria2-next">aria2-next</a></td>
+                <td class="size-cell">5.6M</td>
+                <td class="sha256-cell">e01c73bdcb40d481383a2d9ab2887d5f716a241331ccf2a27f576794c5930951</td>
+            </tr>
+            <tr>
+                <td><a href="x86_64/aria2-next-static-2.8.3-r1.apk">aria2-next-static-2.8.3-r1.apk</a></td>
+                <td class="size-cell">5.6M</td>
+                <td class="sha256-cell">579bfddd4ff4bebf23b90f368a5753e4acb09fd696821b3999414828560eae28</td>
+            </tr>
+            <tr>
+                <td><a href="x86_64/aria2-next-static_2.8.3-1_x86_64.ipk">aria2-next-static_2.8.3-1_x86_64.ipk</a></td>
+                <td class="size-cell">5.6M</td>
+                <td class="sha256-cell">ea92562ac1da31ff45f0c1920ffcec030f5341ad8711ff6a7c17676355fdfb5e</td>
+            </tr>
+        </tbody>
+    </table>
+</details>
+        <!-- end-arch-section-anchor -->
+      </section>
+
+      <section id="notes" class="tab-section" role="tabpanel" aria-labelledby="btn-notes" style="display: none;">
+        <section class="part">
+          <h2>Build profile</h2>
+          <p>
+            These packages are built against official OpenWrt SDK container images and link aria2-next statically with
+            expat, SQLite, OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, and libtorrent.
+            The core uses the Boost.Asio system resolver, while curl uses its threaded resolver, so DNS remains asynchronous.
+          </p>
+        </section>
+
+        <section class="notice">
+          <h2>Compression policy</h2>
+          <p>
+            UPX compression is applied where it is known to be safe and useful. The skip list currently includes the larger and more sensitive targets such as mips64, riscv64, and loongarch64.
+          </p>
+        </section>
+
+        <section class="part">
+          <h2>Verification</h2>
+          <p>
+            The build pipeline verifies the final binary type, fails on dynamic dependencies, checks downloaded dependency hashes,
+            and runs basic executable smoke checks when the target can run on the builder.
+            Release builds compile the <code>aria2-next</code> target only; the large cross-built test executable is opt-in because it cannot run on most builders.
+          </p>
+          <p>Each published directory includes <code>BUILDINFO</code> so you can inspect dependency versions and the final static-link status.</p>
+        </section>
+
+        <section class="part">
+          <h2>Audit sources</h2>
+          <ul>
+            <li><a href="https://github.com/ysway/openwrt-aria2-next" target="_blank" rel="noreferrer">Repository source and workflows</a></li>
+            <li><a href="https://github.com/openwrt/packages/tree/master/net/aria2/files" target="_blank" rel="noreferrer">OpenWrt aria2 init/config reference</a></li>
+            <li><a href="https://github.com/ysway/openwrt-aria2-next/actions" target="_blank" rel="noreferrer">GitHub Actions build logs</a></li>
+            <li><a href="https://github.com/ysway/openwrt-aria2-next/releases" target="_blank" rel="noreferrer">Release artifacts</a></li>
+            <li><a href="https://github.com/AnInsomniacy/aria2-next" target="_blank" rel="noreferrer">Upstream aria2-next project</a></li>
+          </ul>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Open source feed for OpenWrt, published on GitHub Pages from CI artifacts.
+        Source: <a href="https://github.com/ysway/openwrt-aria2-next" target="_blank" rel="noreferrer">ysway/openwrt-aria2-next</a>.
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    const sectionButtons = Array.from(document.querySelectorAll("[data-section]"));
+    const versionButtons = Array.from(document.querySelectorAll(".v-btn"));
+    const themeButton = document.getElementById("toggle-theme");
+    const architectureFilter = document.getElementById("architecture-filter");
+    const architectureEmpty = document.getElementById("architecture-empty");
+
+    function showSection(sectionId) {
+      document.querySelectorAll(".tab-section").forEach((section) => {
+        section.style.display = section.id === sectionId ? "block" : "none";
+      });
+
+      sectionButtons.forEach((button) => {
+        const active = button.dataset.section === sectionId;
+        button.classList.toggle("active", active);
+        button.classList.toggle("inactive", !active);
+        button.setAttribute("aria-selected", String(active));
+      });
+    }
+
+    function switchVersion(version) {
+      const v24 = document.getElementById("v24usage");
+      const v25 = document.getElementById("v25usage");
+      const showV24 = version === "v24";
+
+      v24.style.display = showV24 ? "block" : "none";
+      v25.style.display = showV24 ? "none" : "block";
+
+      versionButtons.forEach((button) => {
+        const active = button.dataset.version === version;
+        button.classList.toggle("active", active);
+        button.classList.toggle("inactive", !active);
+      });
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.toggle("dark", theme === "dark");
+      themeButton.textContent = theme === "dark" ? "Light" : "Dark";
+      themeButton.setAttribute("aria-label", `Use ${theme === "dark" ? "light" : "dark"} theme`);
+    }
+
+    function toggleTheme() {
+      const theme = document.body.classList.contains("dark") ? "light" : "dark";
+      try {
+        localStorage.setItem("aria2-feed-theme", theme);
+      } catch (error) {
+        // Storage can be unavailable in privacy-restricted browsers.
+      }
+      applyTheme(theme);
+    }
+
+    function filterArchitectures(query) {
+      const normalized = query.trim().toLowerCase();
+      let visibleCount = 0;
+
+      document.querySelectorAll(".arch-section").forEach((section) => {
+        const architecture = section.dataset.architecture.toLowerCase();
+        const visible = !normalized || architecture.includes(normalized);
+        section.hidden = !visible;
+        visibleCount += visible ? 1 : 0;
+      });
+
+      architectureEmpty.hidden = visibleCount !== 0;
+    }
+
+    themeButton.addEventListener("click", toggleTheme);
+    architectureFilter.addEventListener("input", () => filterArchitectures(architectureFilter.value));
+    sectionButtons.forEach((button) => {
+      button.addEventListener("click", () => showSection(button.dataset.section));
+    });
+    versionButtons.forEach((button) => {
+      button.addEventListener("click", () => switchVersion(button.dataset.version));
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      let savedTheme = "";
+      try {
+        savedTheme = localStorage.getItem("aria2-feed-theme") || "";
+      } catch (error) {
+        // Fall through to the system preference.
+      }
+      const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      applyTheme(savedTheme || preferredTheme);
+      showSection("usage");
+      switchVersion("v24");
+    });
+  </script>
+</body>
+</html>
