@@ -45,6 +45,13 @@ BUILD_DIR="$BUILDDIR/aria2-next-build"
 rm -rf "$BUILD_DIR"
 
 COMMON_FLAGS="-O2 -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -flto=auto ${EXTRA_CFLAGS:-}"
+COMMON_CXX_FLAGS="$COMMON_FLAGS"
+# v3.0.1's disk/File.cc uses std::exchange without including <utility>.
+# Supply the missing standard header for this release without modifying the
+# pinned upstream source or depending on libstdc++'s transitive includes.
+if [ "$(get_aria2_version)" = "3.0.1" ]; then
+    COMMON_CXX_FLAGS="$COMMON_CXX_FLAGS -include utility"
+fi
 LINK_FLAGS="-L$PREFIX/lib -static -static-libgcc -static-libstdc++ -Wl,--gc-sections -flto=auto"
 
 TARGET_LIBC_ARCHIVE=$("${TARGET_HOST}-gcc" -print-file-name=libc.a 2>/dev/null || true)
@@ -109,7 +116,7 @@ cmake -S "$ARIA2_SRC" -B "$BUILD_DIR" -G Ninja \
     -DCMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH" \
     -DCMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH" \
     -DCMAKE_C_FLAGS="$COMMON_FLAGS" \
-    -DCMAKE_CXX_FLAGS="$COMMON_FLAGS" \
+    -DCMAKE_CXX_FLAGS="$COMMON_CXX_FLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
     -DCMAKE_C_STANDARD_LIBRARIES="$EXTRA_LIBS_STRING" \
     -DCMAKE_CXX_STANDARD_LIBRARIES="$STANDARD_LIBS_STRING" \
@@ -122,10 +129,6 @@ cmake -S "$ARIA2_SRC" -B "$BUILD_DIR" -G Ninja \
     -DOPENSSL_USE_STATIC_LIBS=ON \
     -DARIA2_RELEASE_SIZE_OPTIMIZED=ON \
     -DARIA2_RELEASE_LTO=ON \
-    -DARIA2_ENABLE_BITTORRENT=ON \
-    -DARIA2_ENABLE_METALINK=ON \
-    -DARIA2_ENABLE_WEBSOCKET=ON \
-    -DARIA2_ENABLE_LIBARIA2=OFF \
     -DBUILD_TESTING="$ARIA2_CMAKE_BUILD_TESTING" \
     -DARIA2_BASH_COMPLETION_DIR=share/bash-completion/completions
 

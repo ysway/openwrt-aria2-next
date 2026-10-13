@@ -4,16 +4,16 @@
 [![Package feed](https://img.shields.io/badge/feed-GitHub%20Pages-0969da)](https://ysway.github.io/openwrt-aria2-next/)
 [![License: MIT](https://img.shields.io/badge/Infrastructure-MIT-blue.svg)](LICENSE)
 
-Statically linked [aria2-next](https://github.com/AnInsomniacy/aria2-next) builds for [OpenWrt](https://openwrt.org/), compiled inside official OpenWrt SDK containers and published as OPKG, APK, and raw binary artifacts across 33 target architectures.
+Statically linked [aria2-next](https://github.com/AnInsomniacy/aria2-next) builds for [OpenWrt](https://openwrt.org/), compiled inside official OpenWrt SDK containers and published as OPKG, APK, and raw binary artifacts across 31 target architectures.
 
 This repository owns the OpenWrt build, packaging, service integration, release, and package-feed layers. The downloader source remains in the `aria2-next/` git submodule.
 
 ## Features
 
 - **Self-contained binaries** — target libraries are linked statically to avoid firmware package dependency conflicts
-- **Broad protocol support** — HTTP(S), SFTP, BitTorrent, Metalink, native HLS/MPEG-DASH media downloads, XML-RPC, WebSocket RPC, and ED2K
-- **OpenSSL backend** — TLS support with static OpenSSL, plus asynchronous DNS through the core Boost.Asio system resolver and curl's threaded resolver
-- **33 OpenWrt target architectures** — built with official OpenWrt SDK Docker images
+- **Broad protocol support** — HTTP(S), SFTP, BitTorrent, Metalink 4, native HLS/MPEG-DASH media downloads, JSON-RPC over HTTP/WebSocket, and ED2K
+- **OpenSSL backend** — HTTPS support with static OpenSSL, plus asynchronous DNS through Boost.Asio and curl, including optional DNS-over-HTTPS for curl transfers
+- **31 OpenWrt target architectures** — built with official OpenWrt SDK Docker images
 - **Dual package format** — `.ipk` for OPKG-based OpenWrt and standalone `.apk` for APK-based OpenWrt
 - **OpenWrt service integration** — procd init script and UCI configuration based on OpenWrt's official `net/aria2` model
 - **UPX compression with a safety net** — optional, verified after packing, and skipped on known-sensitive targets
@@ -69,7 +69,7 @@ wget -O- https://raw.githubusercontent.com/ysway/openwrt-aria2-next/master/setup
 For an auditable install, download `setup.sh`, inspect it, then run it. Optional overrides include:
 
 ```sh
-ARIA2_RELEASE_TAG=v2.6.2 ARIA2_ARCH=x86_64 sh setup.sh
+ARIA2_RELEASE_TAG=v3.0.1 ARIA2_ARCH=x86_64 sh setup.sh
 ARIA2_INSTALL_MODE=raw sh setup.sh
 ARIA2_REPO=owner/fork sh setup.sh
 ```
@@ -81,7 +81,7 @@ ARIA2_REPO=owner/fork sh setup.sh
 Use this on OPKG-based OpenWrt:
 
 ```sh
-VERSION=2.6.2
+VERSION=3.0.1
 TAG="v${VERSION}"
 ARCH=x86_64
 
@@ -96,7 +96,7 @@ Replace the example version and architecture with values from the [latest releas
 Use this on APK-based OpenWrt:
 
 ```sh
-VERSION=2.6.2
+VERSION=3.0.1
 TAG="v${VERSION}"
 ARCH=x86_64
 
@@ -123,7 +123,7 @@ The site root is a landing page. The architecture suffix is required in the feed
 ### Option 5: Install the raw binary
 
 ```sh
-VERSION=2.6.2
+VERSION=3.0.1
 TAG="v${VERSION}"
 ARCH=x86_64
 
@@ -165,6 +165,49 @@ Useful paths:
 
 The UCI section type remains `config aria2` to match OpenWrt's official schema. Existing `/etc/config/aria2` files can usually be reused by copying them to `/etc/config/aria2-next`. The service also accepts the older `download_dir` and `dht_enable` keys. aria2-next 2.6 removed RPC username/password authentication; configurations using `rpc_user`, `rpc_passwd`, or `rpc_auth_method='user_pass'` must migrate to `rpc_auth_method='token'` with a non-empty `rpc_secret`. The service fails closed instead of starting those legacy configurations without authentication.
 
+### Upgrading to aria2-next 3
+
+Upstream 3.0 replaces the legacy engine with a Boost.Asio-based core while retaining the `aria2-next` executable, aria2-style configuration/session files, and JSON-RPC methods. This repository keeps its OpenWrt package names, installation paths, and static build model.
+
+XML-RPC, JSONP, Metalink 3, and the libaria2 C++ API are no longer provided. Built-in RPC TLS was also removed: the service rejects `rpc_secure=true` and RPC certificate/key settings, including equivalent `extra_settings`, so an old HTTPS configuration cannot silently start as plaintext HTTP. Use JSON-RPC over HTTP/WebSocket behind a TLS reverse proxy when encrypted remote RPC is needed, and retain the RPC token secret.
+
+For a reverse proxy running on the same device, set UCI `rpc_listen_all='false'` to bind RPC to loopback. HTTPS downloads still verify certificates using the target's CA trust material under `/etc/ssl`; `ca_certificate` or `SSL_CERT_FILE` can select a CA bundle explicitly. Static linking does not bundle a CA store.
+
+| UCI setting | Version 3 behavior |
+|:---|:---|
+| `state_save_interval` | Resume checkpoint interval in seconds, at least `1`; upstream default is `10` |
+| `auto_save_interval` | Legacy alias for `state_save_interval`; `0` is no longer valid |
+| `detach_share_only` | Lets seeding tasks stop counting toward concurrent downloads; `bt_detach_seed_only` remains a service alias |
+| `bt_peer_id_prefix` | BitTorrent peer ID prefix; `peer_id_prefix` remains a service alias |
+| `disk_cache` | Retired upstream and ignored; it does not limit version 3 memory use |
+
+Before upgrading, stop the service and back up `/etc/config/aria2-next` and the configured `config_dir`, including session files and each `state.<instance>` directory. Keep the same download paths and state directories: version 3 retains the version 2.8 stream, ED2K, media, and BitTorrent state layouts. Original aria2 `.aria2` control files are not imported.
+
+The default `/var/etc/aria2-next` directory is normally volatile on OpenWrt. For recovery across device reboots, place `config_dir` on writable persistent storage, mounted before starting the service. For a new instance, for example:
+
+```sh
+mkdir -p /mnt/data/aria2-next-state
+chown aria2:aria2 /mnt/data/aria2-next-state
+uci set aria2-next.main.config_dir='/mnt/data/aria2-next-state'
+uci commit aria2-next
+```
+
+When moving an existing instance, stop it and copy the complete old `config_dir` to the new location before changing the setting.
+
+### Tuning for small routers
+
+Version 3 defaults to five concurrent downloads and up to 16 connections per HTTP download. Media and BitTorrent also use worker threads and buffers; static linking and UPX do not bound runtime memory. A conservative starting point is:
+
+```sh
+uci set aria2-next.main.max_concurrent_downloads='1'
+uci set aria2-next.main.split='2'
+uci set aria2-next.main.max_connection_per_server='2'
+uci commit aria2-next
+service aria2-next restart
+```
+
+Adjust these values for the device and workload. Additional supported version 3 options can be supplied through `list extra_settings`; consult the pinned upstream [option reference](aria2-next/docs/options.md).
+
 ## Feed Notes
 
 - The GitHub Pages site provides OPKG `Packages` and `Packages.gz` metadata.
@@ -181,7 +224,7 @@ The UCI section type remains `config aria2` to match OpenWrt's official schema. 
 sync-upstream.yml (daily or manual)
   └─ Select the newest stable aria2-next SemVer tag
   └─ Parse and reconcile the dependency manifest as untrusted data
-  └─ Build x86_64 and run upstream tests with a read-only checkout
+  └─ Build x86_64, run upstream tests, and exercise BitTorrent over RPC
   └─ Revalidate the exact tag/SHA in a fresh write job and update the submodule
   └─ Dispatch build-aria2.yml
        │
@@ -191,22 +234,23 @@ prepare job
   └─ Read one version and timestamp for the whole run
        │
        ▼
-build matrix (up to 33 targets)
+build matrix (up to 31 targets)
   └─ Pull official OpenWrt SDK image
   └─ Restore dependency/download cache
   └─ Build verified static dependencies
   └─ Build only the aria2-next executable target by default
-  └─ Verify static linkage → optional UPX → IPK → upload
+  └─ Verify static linkage and runnable targets' protocol/service behavior
+  └─ Optional UPX → IPK + APK v3 → upload
        │
        ▼
-APK packaging job
-  └─ Use OpenWrt 25.12 apk-tools 3 to build and verify APK v3
+artifact assembly job
+  └─ Collect each target's already verified packages and binary
        │
        ├─► deploy job: regenerate the feed branch and website
        └─► release job: publish IPK, APK, binary, and SHA256SUMS assets
 ```
 
-Scheduled upstream builds publish automatically only after the isolated x86_64 candidate build and upstream test suite pass. The verification job has read-only repository permission; a separate short write job recreates the data-only manifest change, rejects unexpected staged paths or a moved tag/default branch, and then commits. When no matching full-matrix run remains active, the next scheduled run retries a missing or failed build for the exact default-branch commit, so a transient dispatch failure cannot leave the release/feed permanently stale. Manual build-workflow runs are safe previews by default: they upload Actions artifacts but do not replace the feed or release unless the `publish` input is explicitly enabled. Partial target selections cannot be published because that would erase architectures from the regenerated feed.
+Scheduled upstream builds publish automatically only after the isolated x86_64 candidate build, upstream test suite, and BitTorrent RPC startup/shutdown check pass. The verification job has read-only repository permission; a separate short write job recreates the data-only manifest change, rejects unexpected staged paths or a moved tag/default branch, and then commits. When no matching full-matrix run remains active, the next scheduled run retries a missing or failed build for the exact default-branch commit, so a transient dispatch failure cannot leave the release/feed permanently stale. Manual build-workflow runs are safe previews by default: they upload Actions artifacts but do not replace the feed or release unless the `publish` input is explicitly enabled. Partial target selections cannot be published because that would erase architectures from the regenerated feed.
 
 ### Static dependencies
 
@@ -221,18 +265,21 @@ Dependency versions in [`build_scripts/versions.sh`](build_scripts/versions.sh) 
 | libssh2 | Downloaded, SHA-256 pinned | SFTP |
 | curl | Vendored by the submodule | HTTP(S) and SFTP transfer engine |
 | nghttp2 | Vendored by the submodule | HTTP/2 framing for curl |
-| Boost | Vendored by the submodule | Header-only asynchronous networking for the core and libtorrent |
+| Boost | Vendored by the submodule | Asio networking, Beast HTTP/WebSocket RPC, JSON, and libtorrent headers |
 | spdlog | Vendored by the submodule | Header-only logging |
-| wslay | Vendored by the submodule | WebSocket framing |
 | libtorrent-rasterbar | Vendored by the submodule | BitTorrent engine |
 | GPAC | Vendored by the submodule | Native HLS and MPEG-DASH client |
 | FFmpeg | Vendored by the submodule | Media demuxing, stream probing, and remuxing |
 
-DNS is always asynchronous: aria2-next's core uses the Boost.Asio system resolver, while curl uses its threaded resolver. DNS servers are managed by the operating system.
+DNS is asynchronous: aria2-next's core uses the Boost.Asio system resolver, while curl uses its threaded resolver. The build also enables curl's DNS-over-HTTPS support; setting upstream `dns-over-https` uses that resolver for curl transfers, while other lookups continue to use the system resolver.
+
+The engine and libtorrent are both compiled as C++20. Keeping their Boost.Asio configuration consistent avoids an ABI mismatch that can crash a BitTorrent session on startup. Version 3 uses Boost.Beast/JSON for RPC and no longer needs wslay. Its required dependency stack is supplied through `ARIA2_DEPENDENCY_ROOT` and `ARIA2_BOOST_ROOT`, with the upstream superbuild disabled because this project builds the static dependencies itself.
+
+For v3.0.1, the OpenWrt C++ build also supplies `<utility>` because upstream's disk implementation uses `std::exchange` without including its standard header. This release-specific compatibility flag leaves the pinned downloader source unchanged.
 
 The cross-build keeps whole-program LTO for aria2-next and its other static dependencies, but deliberately compiles FFmpeg without LTO. FFmpeg uses per-object ISA flags for runtime SIMD dispatch; preserving those object boundaries prevents cross-GCC from rejecting optional instructions such as NEON during the final link. Generic MIPS builds also disable incorrect Loongson/MMI autodetection. The build validates GPAC's generated ABI width against the target compiler and supplies FFmpeg's missing RISC-V syscall include when building against musl SDK headers.
 
-FTP was removed upstream in aria2-next 2.6.0. BitTorrent encryption is provided by aria2-next and libtorrent's maintained implementations. Unused GnuTLS, nettle, GMP, libgcrypt, libuv, libxml2, jemalloc, and tcmalloc paths are disabled.
+FTP was removed upstream in aria2-next 2.6.0. BitTorrent encryption is provided by libtorrent. The local dependency profile uses OpenSSL and does not add alternative TLS, allocator, or event-loop libraries.
 
 ## Local Development
 
@@ -312,6 +359,7 @@ Release builds configure upstream with `BUILD_TESTING=OFF` and request the `aria
 | `build_deps_static.sh` | Static dependency build |
 | `build_static_aria2.sh` | aria2-next CMake configuration and selected-target build |
 | `verify_binary.sh` | Static-link and executable smoke verification |
+| `test_binary_runtime.py` | Native HTTP/gzip, HTTPS trust, DoH, token RPC, WebSocket, and BitTorrent regression |
 | `pack_with_upx.sh` | Optional compression with rollback and integrity testing |
 | `collect_artifacts.sh` | Raw binary and `BUILDINFO` generation |
 | `build_ipk.sh` | Reproducible OpenWrt IPK assembly |
@@ -333,7 +381,10 @@ sh -n setup.sh \
   package/aria2-next-static/files/postinst \
   package/aria2-next-static/files/prerm
 sh build_scripts/test_aria2_init.sh
+bash build_scripts/test_dependency_manifest.sh
 ```
+
+Runnable SDK targets also execute `test_binary_runtime.py` and validate the service's generated configurations with the built binary. The protocol fixture uses loopback HTTP/HTTPS servers and requires Python 3 plus an `openssl` command; both are installed by the SDK entrypoint. Cross-target builds retain static-link checks and need hardware or emulation for runtime coverage.
 
 A package/feed layout check can use a dummy executable:
 

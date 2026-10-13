@@ -40,7 +40,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y --no-install-recommends --no-upgrade -t bullseye \
     pkg-config curl file bzip2 xz-utils upx-ucl ca-certificates binutils \
-    make perl python3 python3-pip
+    make perl python3 python3-pip openssl
 
 export PIP_DISABLE_PIP_VERSION_CHECK=1
 python3 -m pip install \

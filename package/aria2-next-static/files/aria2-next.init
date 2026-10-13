@@ -12,6 +12,8 @@
 #   - 'dht_enable'  is accepted as a synonym for 'enable_dht'.
 #   - Persistent engine state is kept below each instance's config directory.
 #   - Removed username/password RPC authentication fails closed.
+#   - Version 3 RPC TLS settings fail closed; use a TLS reverse proxy.
+#   - Renamed state, seeding, and peer-ID options retain UCI aliases.
 #
 # All standard procd/rc.common subcommands are auto-provided:
 #   start | stop | restart | reload | enable | disable | enabled |
@@ -77,24 +79,82 @@ _reset_dir_mode() {
 }
 
 append_options() {
-	local o; local v
+	local o; local v; local name
 	for o in "$@"; do
-		v="$(eval echo "\$$o")"
-		[ -n "$v" ] && \
-			echo "${o//_/-}=$v" >>"$config_file_tmp"
+		eval "v=\"\${$o}\""
+		if [ -n "$v" ]; then
+			name="$(printf '%s' "$o" | tr '_' '-')"
+			printf '%s=%s\n' "$name" "$v" >>"$config_file_tmp"
+		fi
 	done
 }
 
 append_setting() {
 	local s="$1"
 	[ -n "$s" ] && \
-		echo "$s" >>"$config_file_tmp"
+		printf '%s\n' "$s" >>"$config_file_tmp"
 }
 
 append_header() {
 	local h="$1"
 	[ -n "$h" ] && \
-		echo "header=\"$h\"" >>"$config_file_tmp"
+		printf 'header=%s\n' "$h" >>"$config_file_tmp"
+}
+
+validate_rpc_settings() {
+	# Match upstream config parsing: trim each line/name/value and ignore
+	# comments. Inspect the complete file so multiline extra_settings cannot
+	# bypass the security checks. Never print an option value (it may be secret).
+	local invalid require_token
+	require_token=0
+	if [ "$rpc_auth_method" = "token" ] || \
+	   { [ -z "$rpc_auth_method" ] && [ -n "$rpc_secret" ]; }; then
+		require_token=1
+	fi
+	if ! invalid="$(awk -v require_token="$require_token" '
+		function trim(value) {
+			sub(/^[[:space:]]+/, "", value)
+			sub(/[[:space:]]+$/, "", value)
+			return value
+		}
+		{
+			line = trim($0)
+			if (line == "" || substr(line, 1, 1) == "#") next
+			equals = index(line, "=")
+			if (!equals) next
+			name = trim(substr(line, 1, equals - 1))
+			value = trim(substr(line, equals + 1))
+			if (name == "rpc-secret") secret = value
+			if ((name == "rpc-secure" && value != "false") ||
+			    ((name == "rpc-certificate" || name == "rpc-private-key") && value != "") ||
+			    name == "rpc-user" || name == "rpc-passwd") {
+				invalid = name
+				exit
+			}
+		}
+		END {
+			if (invalid != "") print invalid
+			else if (require_token && secret == "") print "rpc-secret"
+		}
+	' "$1")"; then
+		_err "Could not validate generated RPC settings."
+		return 1
+	fi
+	case "$invalid" in
+		rpc-secure|rpc-certificate|rpc-private-key)
+			_err "Built-in RPC TLS is no longer supported; remove $invalid and use a TLS reverse proxy with rpc_secret."
+			return 1
+			;;
+		rpc-user|rpc-passwd)
+			_err "RPC username/password authentication is no longer supported; remove $invalid and configure token authentication with rpc_secret."
+			return 1
+			;;
+		rpc-secret)
+			_err "RPC token authentication requires a non-empty rpc-secret after extra_settings."
+			return 1
+			;;
+	esac
+	return 0
 }
 
 aria2_validate() {
@@ -114,6 +174,7 @@ aria2_validate() {
 		'bt_prioritize_piece:string' \
 		'bt_max_open_files:uinteger' \
 		'bt_max_peers:uinteger' \
+		'bt_peer_id_prefix:string' \
 		'bt_remove_unselected_file:or("true","false")' \
 		'bt_request_peer_speed_limit:string' \
 		'bt_save_metadata:or("true","false")' \
@@ -129,6 +190,8 @@ aria2_validate() {
 		'dir:string' \
 		'disable_ipv6:or("true","false")' \
 		'disk_cache:string' \
+		'dns_over_https:string' \
+		'detach_share_only:or("true","false")' \
 		'enable_dht:or("true","false")' \
 		'enable_dht6:or("true","false")' \
 		'enable_peer_exchange:or("true","false")' \
@@ -157,6 +220,7 @@ aria2_validate() {
 		'retry_wait:uinteger' \
 		'rpc_auth_method:or("none","user_pass","token")' \
 		'rpc_certificate:file' \
+		'rpc_listen_all:or("true","false"):true' \
 		'rpc_listen_port:range(1024,65535)' \
 		'rpc_passwd:string' \
 		'rpc_private_key:file' \
@@ -167,6 +231,7 @@ aria2_validate() {
 		'seed_ratio:ufloat' \
 		'seed_time:ufloat' \
 		'split:uinteger' \
+		'state_save_interval:range(1,600)' \
 		'timeout:uinteger' \
 		'user_agent:string' \
 		'download_dir:string' \
@@ -186,10 +251,25 @@ aria2_start() {
 	if [ -z "$enable_dht" ]; then
 		enable_dht="${dht_enable:-true}"
 	fi
+	[ -n "$detach_share_only" ] || detach_share_only="$bt_detach_seed_only"
+	[ -n "$bt_peer_id_prefix" ] || bt_peer_id_prefix="$peer_id_prefix"
+	[ -n "$state_save_interval" ] || state_save_interval="$auto_save_interval"
 
 	[ "$enabled" = "1" ] || { _info "Instance \"$section\" disabled."; return 1; }
 	[ -n "$dir" ] || { _err "Please set download dir."; return 1; }
 	[ -d "$dir" ] || { _err "Please create download dir first."; return 1; }
+	if [ -n "$state_save_interval" ]; then
+		case "$state_save_interval" in
+			*[!0-9]*)
+				_err "state_save_interval (or legacy auto_save_interval) must be between 1 and 600 seconds."
+				return 1
+				;;
+		esac
+		if [ "$state_save_interval" -lt 1 ] || [ "$state_save_interval" -gt 600 ]; then
+			_err "state_save_interval (or legacy auto_save_interval) must be between 1 and 600 seconds; 0 is no longer supported."
+			return 1
+		fi
+	fi
 
 	if [ "$rpc_auth_method" = "user_pass" ] || [ -n "$rpc_user" ] || [ -n "$rpc_passwd" ]; then
 		_err "RPC username/password authentication is no longer supported; configure token authentication with rpc_secret."
@@ -197,6 +277,10 @@ aria2_start() {
 	fi
 	if [ "$rpc_auth_method" = "token" ] && [ -z "$rpc_secret" ]; then
 		_err "RPC token authentication requires rpc_secret."
+		return 1
+	fi
+	if [ "$rpc_secure" = "true" ] || [ -n "$rpc_certificate" ] || [ -n "$rpc_private_key" ]; then
+		_err "Built-in RPC TLS is no longer supported; remove rpc_secure/rpc_certificate/rpc_private_key and use a TLS reverse proxy with rpc_secret."
 		return 1
 	fi
 
@@ -223,7 +307,7 @@ aria2_start() {
 	append_setting "dir=$dir"
 	append_setting "enable-rpc=true"
 	append_setting "rpc-allow-origin-all=true"
-	append_setting "rpc-listen-all=true"
+	append_options "rpc_listen_all"
 	append_setting "quiet=true"
 	append_setting "continue=true"
 	append_setting "input-file=$session_file"
@@ -264,11 +348,6 @@ aria2_start() {
 		append_setting "rpc-secret=$rpc_secret"
 	fi
 
-	if [ ."$rpc_secure" = ."true" ] && [ -n "$rpc_certificate" ]; then
-		append_setting "rpc-secure=true"
-		append_options "rpc_certificate" "rpc_private_key"
-	fi
-
 	if [ ."$check_certificate" = ."true" ]; then
 		append_setting "check-certificate=true"
 		append_options "ca_certificate"
@@ -297,20 +376,24 @@ aria2_start() {
 		append_setting "bt-tracker=$bt_tracker_list"
 	fi
 
-	append_options "auto_save_interval" "bt_enable_lpd" "bt_max_open_files" "bt_max_peers" \
+	append_options "state_save_interval" "bt_enable_lpd" "bt_max_open_files" "bt_max_peers" \
 		"bt_remove_unselected_file" "bt_request_peer_speed_limit" "bt_prioritize_piece" \
-		"bt_stop_timeout" "bt_detach_seed_only" "bt_save_metadata" "bt_load_saved_metadata" \
+		"bt_stop_timeout" "detach_share_only" "bt_save_metadata" "bt_load_saved_metadata" \
 		"bt_seed_unverified" "certificate" "check_integrity" "connect_timeout" "dht_listen_port" \
-		"disable_ipv6" "disk_cache" "enable_peer_exchange" "event_poll" "file_allocation" \
+		"disable_ipv6" "disk_cache" "dns_over_https" "enable_peer_exchange" "event_poll" "file_allocation" \
 		"follow_torrent" "force_save" "http_accept_gzip" "http_no_cache" "listen_port" \
 		"lowest_speed_limit" "max_concurrent_downloads" "max_connection_per_server" \
 		"max_download_limit" "max_overall_download_limit" "max_overall_upload_limit" "max_tries" \
-		"max_upload_limit" "min_split_size" "pause" "pause_metadata" "peer_id_prefix" "private_key" \
+		"max_upload_limit" "min_split_size" "pause" "pause_metadata" "bt_peer_id_prefix" "private_key" \
 		"retry_wait" "rpc_listen_port" "save_session_interval" "seed_ratio" "seed_time" "split" "timeout" \
 		"user_agent"
 
 	config_list_foreach "$section" "header" append_header
 	config_list_foreach "$section" "extra_settings" append_setting
+	if ! validate_rpc_settings "$config_file_tmp"; then
+		rm -f "$config_file_tmp"
+		return 1
+	fi
 
 	sed '/^$/d' "$config_file_tmp" >"$config_file"
 	rm -f "$config_file_tmp"
@@ -344,7 +427,9 @@ aria2_start() {
 
 	procd_add_jail "$NAME.$section" log
 	procd_add_jail_mount "/usr/lib/ossl-modules"
-	procd_add_jail_mount "$ca_certificate" "$certificate" "$rpc_certificate" "$rpc_private_key"
+	# Static OpenSSL still reads target CA data for HTTPS and DoH verification.
+	[ ! -d /etc/ssl ] || procd_add_jail_mount "/etc/ssl"
+	procd_add_jail_mount "$ca_certificate" "$certificate" "$private_key"
 	procd_add_jail_mount_rw "$dir" "$config_dir" "$log"
 	procd_close_instance
 }

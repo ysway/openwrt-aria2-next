@@ -391,6 +391,7 @@ openssl_configure_args=(
     no-ssl3 no-dtls no-comp no-sctp no-srp
     --cross-compile-prefix="${TARGET_HOST}-"
     --prefix="$PREFIX"
+    --openssldir=/etc/ssl
     --libdir=lib
     -O2
     -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -flto=auto
@@ -499,7 +500,7 @@ cmake -S "$VENDOR_DIR/curl" -B build/curl-release \
     -DCURL_DISABLE_ALTSVC=ON \
     -DCURL_DISABLE_AWS=ON \
     -DCURL_DISABLE_DICT=ON \
-    -DCURL_DISABLE_DOH=ON \
+    -DCURL_DISABLE_DOH=OFF \
     -DCURL_DISABLE_FILE=ON \
     -DCURL_DISABLE_FTP=ON \
     -DCURL_DISABLE_GOPHER=ON \
@@ -519,6 +520,9 @@ cmake -S "$VENDOR_DIR/curl" -B build/curl-release \
     -DCURL_USE_LIBPSL=OFF \
     -DCURL_USE_GSSAPI=OFF \
     -DCURL_USE_OPENSSL=ON \
+    -DCURL_CA_BUNDLE=none \
+    -DCURL_CA_PATH=none \
+    -DCURL_CA_FALLBACK=ON \
     -DOPENSSL_ROOT_DIR="$PREFIX" \
     -DOPENSSL_USE_STATIC_LIBS=ON \
     -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
@@ -530,6 +534,8 @@ cmake --build build/curl-release -j"$NPROC"
 cmake --install build/curl-release
 
 # ── libtorrent-rasterbar ──────────────────────────────────────────────────
+# Boost.Asio inline types must have the same layout in libtorrent and the
+# C++20 engine; a C++17 libtorrent can link successfully but crash at startup.
 log_info "Building vendored libtorrent-rasterbar ${LIBTORRENT_VERSION}"
 cd "$BUILDDIR"
 rm -rf build/libtorrent-rasterbar-release
@@ -538,6 +544,9 @@ cmake -S "$VENDOR_DIR/libtorrent" -B build/libtorrent-rasterbar-release \
     -DCMAKE_INSTALL_PREFIX="$PREFIX" \
     -DCMAKE_MODULE_LINKER_FLAGS="$COMMON_LINK_FLAGS" \
     -DCMAKE_SHARED_LINKER_FLAGS="$COMMON_LINK_FLAGS" \
+    -DCMAKE_CXX_STANDARD=20 \
+    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+    -DCMAKE_CXX_EXTENSIONS=OFF \
     -DBUILD_SHARED_LIBS=OFF \
     -DBoost_INCLUDE_DIR="$VENDOR_DIR/boost" \
     -DBoost_NO_BOOST_CMAKE=ON \

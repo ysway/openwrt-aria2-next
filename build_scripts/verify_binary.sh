@@ -43,7 +43,7 @@ else
     for lib in \
         libssl libcrypto libssh2 libexpat libsqlite3 libz \
         libcurl libnghttp2 libtorrent-rasterbar libgpac \
-        libavformat libavcodec libswresample libavutil libwslay; do
+        libavformat libavcodec libswresample libavutil; do
         if echo "$NEEDED" | grep -qi "$lib"; then
             LEAKED="$LEAKED $lib"
         fi
@@ -61,19 +61,39 @@ fi
 ldd "$BINARY" 2>&1 || true
 
 # ── Functional check ───────────────────────────────────────────────────────
+NATIVE_TARGET=no
+case "$(uname -m):${TARGET_PROCESSOR:-unknown}" in
+    x86_64:x86_64|x86_64:i386|x86_64:i486|i?86:i?86|aarch64:aarch64|arm*:arm|riscv64:riscv64|loongarch64:loongarch64)
+        NATIVE_TARGET=yes
+        ;;
+esac
+BINARY_RUNS=no
 log_info "Functional check: --version"
-if "$BINARY" --version 2>/dev/null; then
+if "$BINARY" --no-conf --version; then
+    BINARY_RUNS=yes
     log_info "$BINARY_NAME --version succeeded"
+elif [ "$NATIVE_TARGET" = yes ]; then
+    log_fatal "$BINARY_NAME --version failed on a native target"
 else
     # Cross-compiled binary may not run on build host; that's OK
     log_warn "$BINARY_NAME --version did not execute (expected for cross builds)"
 fi
 
 log_info "Functional check: --help"
-if "$BINARY" --help >/dev/null 2>&1; then
+if "$BINARY" --no-conf --help >/dev/null 2>&1; then
     log_info "$BINARY_NAME --help succeeded"
+elif [ "$BINARY_RUNS" = yes ]; then
+    log_fatal "$BINARY_NAME --help failed on a runnable target"
 else
     log_warn "$BINARY_NAME --help did not execute (expected for cross builds)"
+fi
+
+if [ "$BINARY_RUNS" = yes ]; then
+    log_info "Checking native HTTP/TLS, DNS-over-HTTPS, RPC, and BitTorrent behavior..."
+    python3 "$SCRIPT_DIR/test_binary_runtime.py" "$BINARY"
+    ARIA2_TEST_BINARY="$BINARY" sh "$SCRIPT_DIR/test_aria2_init.sh"
+else
+    log_info "Native runtime checks require target hardware or emulation"
 fi
 
 export FULLY_STATIC

@@ -7,7 +7,8 @@
 # every schema variable to empty.
 #
 # Verifies disabled/invalid directories, legacy directory aliases, persistent
-# state configuration, and fail-closed RPC authentication migration behavior.
+# state configuration, option aliases, headers, and fail-closed RPC migration.
+# Set ARIA2_TEST_BINARY to validate successful configs with a native binary.
 
 INIT="$(cd "$(dirname "$0")/../package/aria2-next-static/files" && pwd)/aria2-next.init"
 [ -f "$INIT" ] || { echo "init not found: $INIT" >&2; exit 1; }
@@ -37,7 +38,7 @@ procd_close_instance()  { echo "procd_close_instance"     >> "$PROCD_TRACE"; }
 procd_set_param()       { echo "procd_set_param $*"       >> "$PROCD_TRACE"; }
 procd_append_param()    { echo "procd_append_param $*"    >> "$PROCD_TRACE"; }
 procd_add_jail()        { echo "procd_add_jail $*"        >> "$PROCD_TRACE"; }
-procd_add_jail_mount()  { :; }
+procd_add_jail_mount()  { echo "procd_add_jail_mount $*" >> "$PROCD_TRACE"; }
 procd_add_jail_mount_rw() { :; }
 procd_add_reload_trigger() { :; }
 procd_add_validation()  { :; }
@@ -51,7 +52,20 @@ config_foreach() {
     local type="$1"; shift
     eval "$fn main $*"
 }
-config_list_foreach() { :; }
+config_list_foreach() {
+    local values item
+    case "$2" in
+        header) values="$test_headers" ;;
+        extra_settings) values="$test_extra_settings" ;;
+        *) return 0 ;;
+    esac
+    [ -n "$values" ] || return 0
+    while IFS= read -r item; do
+        "$3" "$item"
+    done <<EOF_LIST
+$values
+EOF_LIST
+}
 uci_load_validate() {
     # uci_load_validate <pkg> <type> <section> <validator> [schema...]
     local validator="$4"
@@ -175,6 +189,10 @@ assert_file_contains "$WORK/runtime/success/aria2-next.conf.main" \
 assert_file_contains "$WORK/runtime/success/aria2-next.conf.main" 'enable-dht=true'
 assert_file_excludes "$WORK/runtime/success/aria2-next.conf.main" 'rpc-user='
 [ -d "$WORK/runtime/success/state.main" ] || fail "state directory was not created"
+if [ -d /etc/ssl ]; then
+    grep -Fxq 'procd_add_jail_mount /etc/ssl' "$PROCD_TRACE" || \
+        fail "target CA trust directory was not mounted in the service jail"
+fi
 
 # Case 5: legacy aria2-static keys (download_dir + dht_enable)
 mkdir -p "$WORK/dl2"
@@ -266,5 +284,117 @@ assert_file_contains "$WORK/runtime/token/aria2-next.conf.main" \
     'rpc-secret=correct-horse'
 assert_file_excludes "$WORK/runtime/token/aria2-next.conf.main" 'rpc-user='
 assert_file_excludes "$WORK/runtime/token/aria2-next.conf.main" 'rpc-passwd='
+
+run_case "renamed UCI options preserve legacy behavior" "
+enabled=1
+config_dir=$WORK/runtime/aliases
+dir=$WORK/dl
+auto_save_interval=30
+bt_detach_seed_only=true
+peer_id_prefix=-OW0001-
+"
+assert_result 0 1
+assert_file_contains "$WORK/runtime/aliases/aria2-next.conf.main" 'state-save-interval=30'
+assert_file_contains "$WORK/runtime/aliases/aria2-next.conf.main" 'detach-share-only=true'
+assert_file_contains "$WORK/runtime/aliases/aria2-next.conf.main" 'bt-peer-id-prefix=-OW0001-'
+assert_file_excludes "$WORK/runtime/aliases/aria2-next.conf.main" 'auto-save-interval='
+assert_file_excludes "$WORK/runtime/aliases/aria2-next.conf.main" 'bt-detach-seed-only='
+
+run_case "modern options override legacy aliases" "
+enabled=1
+config_dir=$WORK/runtime/modern-options
+dir=$WORK/dl
+auto_save_interval=0
+state_save_interval=10
+bt_detach_seed_only=true
+detach_share_only=false
+peer_id_prefix=-OLD001-
+bt_peer_id_prefix=-NEW001-
+rpc_listen_all=false
+dns_over_https=https://dns.example/dns-query
+"
+assert_result 0 1
+assert_file_contains "$WORK/runtime/modern-options/aria2-next.conf.main" 'state-save-interval=10'
+assert_file_contains "$WORK/runtime/modern-options/aria2-next.conf.main" 'detach-share-only=false'
+assert_file_contains "$WORK/runtime/modern-options/aria2-next.conf.main" 'bt-peer-id-prefix=-NEW001-'
+assert_file_contains "$WORK/runtime/modern-options/aria2-next.conf.main" 'rpc-listen-all=false'
+assert_file_contains "$WORK/runtime/modern-options/aria2-next.conf.main" 'dns-over-https=https://dns.example/dns-query'
+
+run_case "legacy checkpoint zero has clear migration error" "
+enabled=1
+config_dir=$WORK/runtime/zero-checkpoint
+dir=$WORK/dl
+auto_save_interval=0
+"
+assert_result 1 0
+assert_log_contains '0 is no longer supported'
+
+for tls_setting in 'rpc_secure=true' 'rpc_certificate=/old/cert.pem' 'rpc_private_key=/old/key.pem'; do
+    run_case "legacy RPC TLS rejected: $tls_setting" "
+enabled=1
+config_dir=$WORK/runtime/tls
+dir=$WORK/dl
+$tls_setting
+"
+    assert_result 1 0
+    assert_log_contains 'TLS reverse proxy'
+done
+
+for extra_setting in 'rpc-secure=true' '  rpc-secure = true  ' 'rpc-certificate=/old/cert.pem' 'rpc-private-key=/old/key.pem' 'rpc-user=legacy' 'rpc-passwd=secret'; do
+    run_case "unsafe extra_settings rejected" "
+enabled=1
+config_dir=$WORK/runtime/extra-unsafe
+dir=$WORK/dl
+test_extra_settings='$extra_setting'
+"
+    assert_result 1 0
+    assert_log_contains 'no longer supported'
+done
+
+run_case "multiline extra_settings cannot bypass TLS guard" "
+enabled=1
+config_dir=$WORK/runtime/extra-multiline
+dir=$WORK/dl
+test_extra_settings='split=2
+ rpc-secure = true'
+"
+assert_result 1 0
+assert_log_contains 'TLS reverse proxy'
+
+run_case "extra_settings cannot empty configured RPC token" "
+enabled=1
+config_dir=$WORK/runtime/extra-empty-token
+dir=$WORK/dl
+rpc_auth_method=token
+rpc_secret=correct-horse
+test_extra_settings='rpc-secret='
+"
+assert_result 1 0
+assert_log_contains 'non-empty rpc-secret'
+
+run_case "plaintext proxy config and request headers accepted" "
+enabled=1
+config_dir=$WORK/runtime/headers
+dir=$WORK/dl
+rpc_secure=false
+rpc_auth_method=token
+rpc_secret=correct-horse
+test_extra_settings='# rpc-secure=true is only a comment
+rpc-secure=false
+split=2'
+test_headers='X-OpenWrt-Test: two words
+Accept-Encoding: gzip'
+"
+assert_result 0 1
+assert_file_contains "$WORK/runtime/headers/aria2-next.conf.main" 'header=X-OpenWrt-Test: two words'
+assert_file_contains "$WORK/runtime/headers/aria2-next.conf.main" 'header=Accept-Encoding: gzip'
+assert_file_excludes "$WORK/runtime/headers/aria2-next.conf.main" 'header="'
+
+if [ -n "${ARIA2_TEST_BINARY:-}" ]; then
+    for native_config in success legacy aliases modern-options headers; do
+        "$ARIA2_TEST_BINARY" --conf-path="$WORK/runtime/$native_config/aria2-next.conf.main" \
+            --version >/dev/null || fail "binary rejected generated $native_config config"
+    done
+fi
 
 echo "All aria2-next init smoke tests passed."

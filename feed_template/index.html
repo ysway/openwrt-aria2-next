@@ -22,8 +22,8 @@
         <p class="eyebrow">OpenWrt Package Feed</p>
         <h1>aria2-next Static Feed</h1>
         <p class="lede">
-          Prebuilt static aria2-next packages for OpenWrt with native BitTorrent, Metalink, XML-RPC, asynchronous DNS,
-          ED2K, HTTPS, and SFTP support from the validated expat, SQLite, OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, and libtorrent build profile.
+          Prebuilt static aria2-next packages for OpenWrt with BitTorrent, Metalink 4, JSON-RPC over HTTP/WebSocket,
+          asynchronous DNS, ED2K, HTTPS, SFTP, and native HLS/DASH support.
         </p>
         <div class="chip-row">
           <span class="chip">Fully static binaries</span>
@@ -162,9 +162,31 @@ service aria2-next start</pre>
           <ul>
             <li>RPC listens on port <code>6800</code>.</li>
             <li>Downloads go to <code>/mnt/sda1/aria2-next</code> by default.</li>
-            <li>Rendered configs, session state, and DHT state live under <code>/var/etc/aria2-next</code>.</li>
+            <li>Rendered configs, sessions, and per-instance engine state live under <code>/var/etc/aria2-next</code>, which is normally volatile on OpenWrt.</li>
             <li>BitTorrent Local Peer Discovery and DHT are enabled by default.</li>
           </ul>
+        </section>
+
+        <section class="part">
+          <h2>Upgrading to version 3</h2>
+          <p>
+            Version 3 keeps the package paths, aria2-style configuration/session files, and version 2.8 engine state layouts.
+            Stop the service and back up UCI plus the complete configured <code>config_dir</code> before upgrading.
+            Use a writable persistent <code>config_dir</code> for recovery after device reboots; copy existing sessions and
+            <code>state.&lt;instance&gt;</code> directories before moving it. Original aria2 <code>.aria2</code> files are not imported.
+          </p>
+          <p>
+            JSON-RPC over HTTP/WebSocket replaces XML-RPC; JSONP, Metalink 3, and built-in RPC TLS are no longer provided.
+            The service rejects old RPC TLS settings, including those in <code>extra_settings</code>.
+            Use a TLS reverse proxy for encrypted remote RPC and retain the RPC token secret.
+          </p>
+          <p>
+            Set <code>state_save_interval</code> to at least <code>1</code> second; the old
+            <code>auto_save_interval=0</code> is invalid. The service accepts
+            <code>bt_detach_seed_only</code> as an alias for <code>detach_share_only</code> and
+            <code>peer_id_prefix</code> as an alias for <code>bt_peer_id_prefix</code>.
+            See the <a href="https://github.com/ysway/openwrt-aria2-next#configuration" target="_blank" rel="noreferrer">configuration guide</a> for storage and router tuning examples.
+          </p>
         </section>
       </section>
 
@@ -191,8 +213,13 @@ service aria2-next start</pre>
           <h2>Build profile</h2>
           <p>
             These packages are built against official OpenWrt SDK container images and link aria2-next statically with
-            expat, SQLite, OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, and libtorrent.
-            The core uses the Boost.Asio system resolver, while curl uses its threaded resolver, so DNS remains asynchronous.
+            expat, SQLite, OpenSSL, libssh2, zlib, curl, nghttp2, Boost, spdlog, libtorrent, GPAC, and FFmpeg.
+            Boost.Asio provides the event loop, and Boost.Beast/JSON provide RPC. The core uses the system resolver;
+            curl uses its threaded resolver and also supports optional DNS-over-HTTPS.
+          </p>
+          <p>
+            Static linking avoids shared-library dependencies. It does not cap memory use: tune concurrent downloads and
+            per-download connections for small routers. Version 3 ignores the retired <code>disk_cache</code> option.
           </p>
         </section>
 
@@ -211,6 +238,7 @@ service aria2-next start</pre>
             Release builds compile the <code>aria2-next</code> target only; the large cross-built test executable is opt-in because it cannot run on most builders.
           </p>
           <p>Each published directory includes <code>BUILDINFO</code> so you can inspect dependency versions and the final static-link status.</p>
+          <p>Native x86_64 candidate verification also runs upstream unit tests and checks BitTorrent startup and shutdown over RPC.</p>
         </section>
 
         <section class="part">

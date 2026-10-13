@@ -6,13 +6,17 @@ This file is a compact handoff for future agents working on `openwrt-aria2-next`
 
 Build and publish static `aria2-next` packages for OpenWrt using official OpenWrt SDK Docker images.
 
+Keep downloader implementation in the pinned upstream submodule. This repository owns OpenWrt integration, verified static dependency builds, package/service behavior, releases, and the feed; do not fork the engine to reproduce removed upstream features.
+
 ## Upstream Facts
 
 - Upstream repository: `https://github.com/AnInsomniacy/aria2-next.git`
 - Local submodule path: `aria2-next/`
 - Current version extracted from `aria2-next/CMakeLists.txt`
 - Build system: CMake 3.25+ with Ninja
+- Language baseline: C11/C++20, including libtorrent
 - Produced executable: `aria2-next`
+- Test executable and CTest name: `aria2_tests`
 - Dependency baseline: `aria2-next/packaging/dependencies.env`
 - Dependency policy and trusted download metadata: `build_scripts/versions.sh`
 
@@ -30,7 +34,6 @@ artifact `BUILDINFO` files):
 | nghttp2 | Vendored by the submodule |
 | Boost | Vendored by the submodule |
 | spdlog | Vendored by the submodule |
-| wslay | Vendored by the submodule |
 | libtorrent-rasterbar | Vendored by the submodule |
 | GPAC | Vendored by the submodule |
 | FFmpeg | Vendored by the submodule |
@@ -45,6 +48,7 @@ artifact `BUILDINFO` files):
 - UCI section type: keep `config aria2` for compatibility with OpenWrt's official aria2 config schema
 - Default runtime config directory: `/var/etc/aria2-next`
 - Default sample download directory: `/mnt/sda1/aria2-next`
+- Target matrix: 31 architectures, validated by `build_scripts/ci_matrix.sh`
 
 The service is adapted from official OpenWrt `net/aria2`. OpenWrt 24.10 and 25.12 had byte-identical aria2 init/config sources when this migration was done.
 
@@ -89,6 +93,14 @@ docker run --rm --user root \
   into shell or JavaScript source. Its build-status reconciliation retries a
   missing or failed full-matrix dispatch for the exact default-branch SHA.
 - Preserve OpenSSL `gcc-ar`, `gcc-ranlib`, and `gcc-nm` wrappers for LTO.
+- Keep OpenSSL's runtime trust directory at `/etc/ssl`; curl uses its default
+  trust fallback rather than build-host paths. The target still needs CA data.
+- Compile the engine and libtorrent with C++20 so their Boost.Asio feature
+  definitions and layouts agree. Validate BitTorrent startup through RPC on
+  runnable native builds; successful linking and unit tests alone can miss
+  this ABI problem. `verify_binary.sh` runs `test_binary_runtime.py` for
+  HTTP/gzip, HTTPS trust, DoH, authenticated HTTP/WebSocket RPC, and BitTorrent,
+  then validates the generated service configurations with that binary.
 - Keep FFmpeg itself out of LTO. Its runtime-dispatch objects carry different
   ISA flags, and cross-GCC can otherwise reject optional instructions such as
   NEON during the final generic-target link. Generic MIPS builds separately
@@ -96,13 +108,20 @@ docker run --rm --user root \
 - Derive GPAC's 32/64-bit ABI from the target compiler rather than target-name
   guesses. On RISC-V, keep the forced `asm/unistd.h` include that backports
   FFmpeg's musl fix and exposes the `riscv_hwprobe` syscall number.
-- The CMake build enables OpenSSL, zlib, expat, SQLite3, libssh2, curl,
-  nghttp2, libtorrent, GPAC, FFmpeg, BitTorrent, Metalink, native HLS/DASH,
-  XML-RPC, and WebSocket support. Vendored Boost provides the core Boost.Asio
-  system resolver and libtorrent headers; vendored spdlog and wslay provide
-  logging and WebSocket framing. curl uses its threaded resolver, so DNS
-  remains asynchronous throughout.
-- The local OpenWrt profile explicitly disables GnuTLS, nettle, GMP, libgcrypt, libuv, libxml2, jemalloc, and tcmalloc.
+- Version 3 requires the OpenSSL, zlib, expat, SQLite3, curl/libssh2/nghttp2,
+  libtorrent, GPAC, and FFmpeg stack. Disable `ARIA2_SUPERBUILD` and supply
+  `ARIA2_DEPENDENCY_ROOT` and `ARIA2_BOOST_ROOT` for our prebuilt libraries;
+  do not pass removed legacy feature switches that CMake merely ignores.
+- v3.0.1 needs a C++-only `-include utility` workaround for `std::exchange`
+  in `src/disk/File.cc`. Keep it scoped to that release; do not dirty the
+  upstream gitlink or add the C++ header to C compiler flags.
+- Vendored Boost supplies Asio networking, Beast HTTP/WebSocket RPC, JSON,
+  and libtorrent headers; spdlog supplies logging. wslay was removed upstream.
+  curl uses its threaded resolver, and its DNS-over-HTTPS support is enabled
+  for the optional upstream `dns-over-https` setting. Other lookups use the
+  system resolver.
+- The local dependency profile keeps OpenSSL as its TLS backend and does not
+  add alternative TLS, allocator, or event-loop libraries.
 
 ## Package Format Lessons
 
@@ -147,9 +166,9 @@ bash build_scripts/build_ipk.sh x86_64 "$tmpdir/aria2-next" "$tmpdir/out"
 Run APK checks inside an OpenWrt 25.12 SDK so apk-tools 3 is available. For
 end-to-end confidence, run one Docker SDK build, preferably `x86_64` first.
 
-Previously validated `v2.4.1` SDK builds: `x86_64`, `arm_cortex-a9`, and
-`i386_pentium-mmx` on `24.10.4`. Revalidate with the current SDK defaults after
-changing toolchain-sensitive logic.
+Revalidate with the current SDK defaults after changing toolchain-sensitive
+logic. For a major upstream change, run the native x86_64 unit suite and
+BitTorrent RPC startup/shutdown check, then representative cross-target builds.
 
 ## Known Migration Rules
 
@@ -158,3 +177,19 @@ changing toolchain-sensitive logic.
 - Replace old raw binary asset `aria2c` with `aria2-next`.
 - Keep service config compatibility with official OpenWrt aria2 where practical.
 - Do not introduce a conflict with the official `aria2` package unless a future task explicitly requests it.
+- Version 3 supports JSON-RPC over HTTP/WebSocket, not XML-RPC, JSONP, Metalink
+  3, or libaria2. Built-in RPC TLS was removed. Reject RPC TLS options in UCI
+  and `extra_settings` so an old secure configuration cannot start plaintext;
+  recommend a TLS reverse proxy with the existing token secret.
+- Use UCI `state_save_interval` (minimum 1 second); `auto_save_interval` remains
+  an alias, but 0 is invalid. Map `bt_detach_seed_only` to `detach_share_only`
+  and `peer_id_prefix` to `bt_peer_id_prefix`. `disk_cache` is retired upstream
+  and must not be described as a version 3 memory limit.
+- Keep the version 2.8 session and `state.<instance>` directories during an
+  upgrade: stream, ED2K, media, and BitTorrent state layouts are retained.
+  Original aria2 `.aria2` control files are not imported. Back up UCI and the
+  complete `config_dir` while the service is stopped.
+- `/var/etc/aria2-next` is normally volatile. Document a writable persistent
+  `config_dir` for reboot recovery and copy existing state before relocating
+  it. For smaller routers, tune concurrent downloads and per-download
+  connections; static linking and UPX do not impose a runtime memory limit.

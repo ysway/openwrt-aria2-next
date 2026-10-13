@@ -45,7 +45,6 @@ libtorrent_version: $LIBTORRENT_VERSION
 gpac_version: $GPAC_VERSION
 ffmpeg_version: $FFMPEG_VERSION
 spdlog_version: $SPDLOG_VERSION
-wslay_version: $WSLAY_VERSION
 upx_applied: $UPX_APPLIED
 fully_static: $FULLY_STATIC
 build_date: $(date -u +%Y-%m-%dT%H:%M:%SZ)

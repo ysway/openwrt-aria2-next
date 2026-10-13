@@ -88,9 +88,9 @@ Architecture: $PKG_ARCH
 Maintainer: openwrt-aria2-next
 Description: aria2-next download utility (statically linked)
  A maintained aria2-compatible download utility with ED2K, BitTorrent,
- Metalink, HLS, MPEG-DASH, and HTTP/HTTPS/SFTP support. This package ships a
+ Metalink 4, HLS, MPEG-DASH, and HTTP/HTTPS/SFTP support. This package ships a
  statically linked aria2-next binary built with Expat, SQLite, OpenSSL,
- libssh2, zlib, curl, nghttp2, Boost, spdlog, wslay, libtorrent, GPAC, and
+ libssh2, zlib, curl, nghttp2, Boost, spdlog, libtorrent, GPAC, and
  FFmpeg. DNS is asynchronous through the core Boost.Asio system resolver and
  curl's threaded resolver.
 Installed-Size: $INSTALLED_SIZE
