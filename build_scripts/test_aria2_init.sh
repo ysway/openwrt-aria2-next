@@ -340,7 +340,7 @@ $tls_setting
     assert_log_contains 'TLS reverse proxy'
 done
 
-for extra_setting in 'rpc-secure=true' '  rpc-secure = true  ' 'rpc-certificate=/old/cert.pem' 'rpc-private-key=/old/key.pem' 'rpc-user=legacy' 'rpc-passwd=secret'; do
+for extra_setting in 'rpc-secure=true' '  rpc-secure = true  ' 'rpc-secure' '  rpc-secure  ' 'rpc-certificate=/old/cert.pem' 'rpc-private-key=/old/key.pem' 'rpc-user=legacy' 'rpc-passwd=secret'; do
     run_case "unsafe extra_settings rejected" "
 enabled=1
 config_dir=$WORK/runtime/extra-unsafe
@@ -357,6 +357,16 @@ config_dir=$WORK/runtime/extra-multiline
 dir=$WORK/dl
 test_extra_settings='split=2
  rpc-secure = true'
+"
+assert_result 1 0
+assert_log_contains 'TLS reverse proxy'
+
+run_case "multiline bare flag cannot bypass TLS guard" "
+enabled=1
+config_dir=$WORK/runtime/extra-bare-multiline
+dir=$WORK/dl
+test_extra_settings='split=2
+  rpc-secure  '
 "
 assert_result 1 0
 assert_log_contains 'TLS reverse proxy'
@@ -380,7 +390,8 @@ rpc_secure=false
 rpc_auth_method=token
 rpc_secret=correct-horse
 test_extra_settings='# rpc-secure=true is only a comment
-rpc-secure=false
+  # rpc-secure
+  rpc-secure = false
 split=2'
 test_headers='X-OpenWrt-Test: two words
 Accept-Encoding: gzip'
@@ -391,10 +402,25 @@ assert_file_contains "$WORK/runtime/headers/aria2-next.conf.main" 'header=Accept
 assert_file_excludes "$WORK/runtime/headers/aria2-next.conf.main" 'header="'
 
 if [ -n "${ARIA2_TEST_BINARY:-}" ]; then
+    # Upstream answers --version before reading the config. Run the empty
+    # session in foreground command-line mode instead, without RPC listeners.
+    validate_native_config() {
+        "$ARIA2_TEST_BINARY" --conf-path="$1" \
+            --daemon=false --enable-rpc=false --enable-dht=false \
+            --bt-enable-lpd=false --bt-port-mapping=false --stop=1 \
+            >/dev/null
+    }
     for native_config in success legacy aliases modern-options headers; do
-        "$ARIA2_TEST_BINARY" --conf-path="$WORK/runtime/$native_config/aria2-next.conf.main" \
-            --version >/dev/null || fail "binary rejected generated $native_config config"
+        validate_native_config "$WORK/runtime/$native_config/aria2-next.conf.main" || \
+            fail "binary rejected generated $native_config config"
     done
+    cp "$WORK/runtime/success/aria2-next.conf.main" "$WORK/invalid.conf"
+    printf '\nunknown-openwrt-regression-option=true\n' >> "$WORK/invalid.conf"
+    if validate_native_config "$WORK/invalid.conf" 2>"$WORK/invalid.log"; then
+        fail "native config check did not reject an unknown option"
+    fi
+    grep -Fq 'unknown-openwrt-regression-option' "$WORK/invalid.log" || \
+        fail "native config check failed without parsing the unknown option"
 fi
 
 echo "All aria2-next init smoke tests passed."

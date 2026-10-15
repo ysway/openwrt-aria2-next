@@ -73,6 +73,11 @@ TARGET_PROCESSOR="${TARGET_HOST%%-*}"
 export TARGET_HOST TARGET_PROCESSOR
 log_info "Target: HOST=$TARGET_HOST PROCESSOR=$TARGET_PROCESSOR SSL=$OPENSSL_TARGET UPX_SKIP=$UPX_SKIP"
 
+if is_truthy "${ARIA2_BUILD_TESTS:-no}"; then
+    log_info "Testing target-compiler C++ compatibility detection..."
+    bash "$SCRIPT_DIR/test_cxx_compat.sh" "${TARGET_HOST}-g++" "$ARIA2_SRC"
+fi
+
 # ── Build static dependencies ──────────────────────────────────────────────
 export PREFIX=/work/static-prefix
 export BUILDDIR=/work/build

@@ -18,6 +18,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import xmlrpc.client
 
 
 PAYLOAD = bytes(range(256)) * 1024
@@ -142,6 +143,11 @@ def main(binary):
 
             download("http.bin", f"http://127.0.0.1:{plain.server_port}/payload")
             download("gzip.bin", f"http://127.0.0.1:{plain.server_port}/gzip")
+            thunder_payload = f"AAhttp://127.0.0.1:{plain.server_port}/payloadZZ".encode()
+            download("thunder.bin", "thunder://" + base64.b64encode(thunder_payload).decode())
+            download("suffix.bin", f"http://127.0.0.1:{plain.server_port}/payload",
+                     ["--incomplete-suffix=.part"])
+            require(not (downloads / "suffix.bin.part").exists(), "Incomplete suffix was not removed")
             tls_url = f"https://localhost:{secure.server_port}/payload"
             download("untrusted.bin", tls_url, success=False)
             download("trusted.bin", tls_url, trusted=True)
@@ -168,11 +174,23 @@ def main(binary):
                         headers={"Content-Type": "application/json"})
                     return json.loads(opener.open(request, timeout=5).read())
 
+                def xml_rpc_version(token=secret):
+                    request = urllib.request.Request(
+                        f"http://127.0.0.1:{port}/rpc",
+                        data=xmlrpc.client.dumps((f"token:{token}",),
+                                                 methodname="aria2.getVersion").encode(),
+                        headers={"Content-Type": "text/xml"})
+                    params, method = xmlrpc.client.loads(opener.open(request, timeout=5).read())
+                    require(method is None and len(params) == 1, "Invalid XML-RPC response")
+                    return params[0]
+
                 deadline = time.monotonic() + 10
                 while True:
                     require(engine.poll() is None, "RPC engine exited during startup")
                     try:
-                        require("result" in rpc("aria2.getVersion"), "RPC getVersion failed")
+                        version = rpc("aria2.getVersion").get("result")
+                        require(isinstance(version, dict) and "version" in version,
+                                "RPC getVersion failed")
                         break
                     except (OSError, urllib.error.URLError):
                         require(time.monotonic() < deadline, "RPC startup timed out")
@@ -182,6 +200,14 @@ def main(binary):
                 except urllib.error.HTTPError as error:
                     rejected = error.code in (401, 403)
                 require(rejected, "RPC accepted an invalid token")
+                require(xml_rpc_version() == version, "XML-RPC getVersion differs from JSON-RPC")
+                try:
+                    xml_rpc_version(token="wrong")
+                except xmlrpc.client.Fault as fault:
+                    require(fault.faultCode != 0 and "unauthorized" in fault.faultString.lower(),
+                            "XML-RPC returned an unexpected authentication fault")
+                else:
+                    raise RuntimeError("XML-RPC accepted an invalid token")
                 websocket_version(port, secret)
                 require("result" in rpc("aria2.getBtSessionStatus"), "BitTorrent session RPC failed")
                 magnet = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567"
@@ -194,7 +220,7 @@ def main(binary):
                         f"BitTorrent task did not become active: {status}")
                 require("result" in rpc("aria2.shutdown"), "RPC shutdown failed")
                 require(engine.wait(timeout=20) == 0, "RPC shutdown returned an error")
-            print("Native runtime checks passed: HTTP, gzip, HTTPS trust, DoH, token RPC, WebSocket, BitTorrent.")
+            print("Native runtime checks passed: HTTP, gzip, Thunder, incomplete suffix, HTTPS trust, DoH, token JSON/XML-RPC, WebSocket, BitTorrent.")
         except Exception:
             log_path = root / "engine.log"
             if log_path.exists():

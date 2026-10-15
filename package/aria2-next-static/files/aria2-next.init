@@ -102,9 +102,9 @@ append_header() {
 }
 
 validate_rpc_settings() {
-	# Match upstream config parsing: trim each line/name/value and ignore
-	# comments. Inspect the complete file so multiline extra_settings cannot
-	# bypass the security checks. Never print an option value (it may be secret).
+	# Match upstream config parsing: trim each line/name/value, treat a bare
+	# flag as true, and ignore comments. Inspect the complete file so multiline
+	# extra_settings cannot bypass the checks. Never print a possibly secret value.
 	local invalid require_token
 	require_token=0
 	if [ "$rpc_auth_method" = "token" ] || \
@@ -121,9 +121,13 @@ validate_rpc_settings() {
 			line = trim($0)
 			if (line == "" || substr(line, 1, 1) == "#") next
 			equals = index(line, "=")
-			if (!equals) next
-			name = trim(substr(line, 1, equals - 1))
-			value = trim(substr(line, equals + 1))
+			if (equals) {
+				name = trim(substr(line, 1, equals - 1))
+				value = trim(substr(line, equals + 1))
+			} else {
+				name = line
+				value = "true"
+			}
 			if (name == "rpc-secret") secret = value
 			if ((name == "rpc-secure" && value != "false") ||
 			    ((name == "rpc-certificate" || name == "rpc-private-key") && value != "") ||

@@ -22,7 +22,7 @@
         <p class="eyebrow">OpenWrt Package Feed</p>
         <h1>aria2-next Static Feed</h1>
         <p class="lede">
-          Prebuilt static aria2-next packages for OpenWrt with BitTorrent, Metalink 4, JSON-RPC over HTTP/WebSocket,
+          Prebuilt static aria2-next packages for OpenWrt with BitTorrent, Metalink 4, JSON-RPC over HTTP/WebSocket, XML-RPC over HTTP,
           asynchronous DNS, ED2K, HTTPS, SFTP, and native HLS/DASH support.
         </p>
         <div class="chip-row">
@@ -176,8 +176,9 @@ service aria2-next start</pre>
             <code>state.&lt;instance&gt;</code> directories before moving it. Original aria2 <code>.aria2</code> files are not imported.
           </p>
           <p>
-            JSON-RPC over HTTP/WebSocket replaces XML-RPC; JSONP, Metalink 3, and built-in RPC TLS are no longer provided.
-            The service rejects old RPC TLS settings, including those in <code>extra_settings</code>.
+            JSON-RPC over HTTP/WebSocket and XML-RPC over HTTP at <code>/rpc</code> share token authentication;
+            XML-RPC was restored in 3.0.2. JSONP, Metalink 3, and built-in RPC TLS remain unavailable.
+            The service rejects old RPC TLS settings, including bare flags in <code>extra_settings</code>.
             Use a TLS reverse proxy for encrypted remote RPC and retain the RPC token secret.
           </p>
           <p>
@@ -186,6 +187,12 @@ service aria2-next start</pre>
             <code>bt_detach_seed_only</code> as an alias for <code>detach_share_only</code> and
             <code>peer_id_prefix</code> as an alias for <code>bt_peer_id_prefix</code>.
             See the <a href="https://github.com/ysway/openwrt-aria2-next#configuration" target="_blank" rel="noreferrer">configuration guide</a> for storage and router tuning examples.
+          </p>
+          <p>
+            Version 3.0.4 restores <code>thunder://</code> links and adds <code>aria2.moveDownload</code>
+            for moving unfinished downloads. Optional <code>incomplete-suffix</code>,
+            <code>auto-file-renaming-style</code>, and <code>download-result</code> settings can use
+            <code>extra_settings</code>; the package retains their upstream defaults.
           </p>
         </section>
       </section>
@@ -220,6 +227,8 @@ service aria2-next start</pre>
           <p>
             Static linking avoids shared-library dependencies. It does not cap memory use: tune concurrent downloads and
             per-download connections for small routers. Version 3 ignores the retired <code>disk_cache</code> option.
+            The packaged <code>file_allocation=none</code> profile creates sparse files, as does <code>trunc</code>;
+            <code>prealloc</code> and <code>falloc</code> reserve disk space before downloading.
           </p>
         </section>
 

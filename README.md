@@ -11,7 +11,7 @@ This repository owns the OpenWrt build, packaging, service integration, release,
 ## Features
 
 - **Self-contained binaries** — target libraries are linked statically to avoid firmware package dependency conflicts
-- **Broad protocol support** — HTTP(S), SFTP, BitTorrent, Metalink 4, native HLS/MPEG-DASH media downloads, JSON-RPC over HTTP/WebSocket, and ED2K
+- **Broad protocol support** — HTTP(S), SFTP, BitTorrent, Metalink 4, native HLS/MPEG-DASH media downloads, JSON-RPC over HTTP/WebSocket, XML-RPC over HTTP, and ED2K
 - **OpenSSL backend** — HTTPS support with static OpenSSL, plus asynchronous DNS through Boost.Asio and curl, including optional DNS-over-HTTPS for curl transfers
 - **31 OpenWrt target architectures** — built with official OpenWrt SDK Docker images
 - **Dual package format** — `.ipk` for OPKG-based OpenWrt and standalone `.apk` for APK-based OpenWrt
@@ -69,7 +69,7 @@ wget -O- https://raw.githubusercontent.com/ysway/openwrt-aria2-next/master/setup
 For an auditable install, download `setup.sh`, inspect it, then run it. Optional overrides include:
 
 ```sh
-ARIA2_RELEASE_TAG=v3.0.1 ARIA2_ARCH=x86_64 sh setup.sh
+ARIA2_RELEASE_TAG=v3.0.4 ARIA2_ARCH=x86_64 sh setup.sh
 ARIA2_INSTALL_MODE=raw sh setup.sh
 ARIA2_REPO=owner/fork sh setup.sh
 ```
@@ -81,7 +81,7 @@ ARIA2_REPO=owner/fork sh setup.sh
 Use this on OPKG-based OpenWrt:
 
 ```sh
-VERSION=3.0.1
+VERSION=3.0.4
 TAG="v${VERSION}"
 ARCH=x86_64
 
@@ -96,7 +96,7 @@ Replace the example version and architecture with values from the [latest releas
 Use this on APK-based OpenWrt:
 
 ```sh
-VERSION=3.0.1
+VERSION=3.0.4
 TAG="v${VERSION}"
 ARCH=x86_64
 
@@ -123,7 +123,7 @@ The site root is a landing page. The architecture suffix is required in the feed
 ### Option 5: Install the raw binary
 
 ```sh
-VERSION=3.0.1
+VERSION=3.0.4
 TAG="v${VERSION}"
 ARCH=x86_64
 
@@ -169,7 +169,7 @@ The UCI section type remains `config aria2` to match OpenWrt's official schema. 
 
 Upstream 3.0 replaces the legacy engine with a Boost.Asio-based core while retaining the `aria2-next` executable, aria2-style configuration/session files, and JSON-RPC methods. This repository keeps its OpenWrt package names, installation paths, and static build model.
 
-XML-RPC, JSONP, Metalink 3, and the libaria2 C++ API are no longer provided. Built-in RPC TLS was also removed: the service rejects `rpc_secure=true` and RPC certificate/key settings, including equivalent `extra_settings`, so an old HTTPS configuration cannot silently start as plaintext HTTP. Use JSON-RPC over HTTP/WebSocket behind a TLS reverse proxy when encrypted remote RPC is needed, and retain the RPC token secret.
+XML-RPC over HTTP at `/rpc` was restored in 3.0.2 and shares JSON-RPC's token authentication. JSONP, Metalink 3, and the libaria2 C++ API remain unavailable. Built-in RPC TLS was removed: the service rejects enabled `rpc_secure` and RPC certificate/key settings, including equivalent `extra_settings` and bare `rpc-secure` flags, so an old HTTPS configuration cannot silently start as plaintext HTTP. Use a TLS reverse proxy when encrypted remote RPC is needed, and retain the RPC token secret.
 
 For a reverse proxy running on the same device, set UCI `rpc_listen_all='false'` to bind RPC to loopback. HTTPS downloads still verify certificates using the target's CA trust material under `/etc/ssl`; `ca_certificate` or `SSL_CERT_FILE` can select a CA bundle explicitly. Static linking does not bundle a CA store.
 
@@ -193,6 +193,16 @@ uci commit aria2-next
 ```
 
 When moving an existing instance, stop it and copy the complete old `config_dir` to the new location before changing the setting.
+
+### Changes in 3.0.4
+
+Upstream restores `thunder://` links wherever a URI is accepted, including `aria2.probe`. The new `aria2.moveDownload` RPC method moves an unfinished task's files to another directory, pausing a running task for the move and resuming it afterward.
+
+For the packaged service, move destinations must be writable by the service user and accessible inside its procd jail. The configured download directory is mounted read-write; the RPC method does not grant access to other storage paths.
+
+Optional `incomplete-suffix` gives unfinished HTTP/SFTP files a suffix such as `.part`; its default is empty. `auto-file-renaming-style=parentheses` selects browser-style numbered filenames instead of the default `dot` style, and `download-result=default|full|hide` controls the results table printed on exit. These options can use the existing `list extra_settings` interface; the package does not override their upstream defaults. For example, add `list extra_settings 'incomplete-suffix=.part'` to a `config aria2` section if desired.
+
+File allocation was corrected in 3.0.3: `none` and `trunc` create sparse files, while `prealloc` and `falloc` reserve disk space before downloading. The packaged `file_allocation='none'` profile is retained; allow for the disk-space and startup-work differences before selecting preallocation on a router.
 
 ### Tuning for small routers
 
@@ -275,7 +285,7 @@ DNS is asynchronous: aria2-next's core uses the Boost.Asio system resolver, whil
 
 The engine and libtorrent are both compiled as C++20. Keeping their Boost.Asio configuration consistent avoids an ABI mismatch that can crash a BitTorrent session on startup. Version 3 uses Boost.Beast/JSON for RPC and no longer needs wslay. Its required dependency stack is supplied through `ARIA2_DEPENDENCY_ROOT` and `ARIA2_BOOST_ROOT`, with the upstream superbuild disabled because this project builds the static dependencies itself.
 
-For v3.0.1, the OpenWrt C++ build also supplies `<utility>` because upstream's disk implementation uses `std::exchange` without including its standard header. This release-specific compatibility flag leaves the pinned downloader source unchanged.
+The build checks upstream's actual `src/disk/File.cc` with the target C++ compiler before configuring CMake. If plain compilation fails but adding `<utility>` succeeds, it applies a C++-only `-include utility` compatibility flag for the missing `std::exchange` header. Upstream 3.0.4 includes that header, so it builds without the flag. Unrelated compile failures stop the build. This source-based check replaces the version-specific workaround that missed the 3.0.3 sync failure and leaves the pinned downloader source unchanged.
 
 The cross-build keeps whole-program LTO for aria2-next and its other static dependencies, but deliberately compiles FFmpeg without LTO. FFmpeg uses per-object ISA flags for runtime SIMD dispatch; preserving those object boundaries prevents cross-GCC from rejecting optional instructions such as NEON during the final link. Generic MIPS builds also disable incorrect Loongson/MMI autodetection. The build validates GPAC's generated ABI width against the target compiler and supplies FFmpeg's missing RISC-V syscall include when building against musl SDK headers.
 
@@ -333,7 +343,7 @@ internal versions.
 | Variable or workflow input | Default | Effect |
 |:---|:---|:---|
 | `NPROC` | detected CPU count | Limits parallel Make/Ninja work |
-| `ARIA2_BUILD_TESTS` / `build_tests` | `no` | Also compiles `aria2_tests`; it is not runnable for most cross targets |
+| `ARIA2_BUILD_TESTS` / `build_tests` | `no` | Runs target-compiler compatibility tests and compiles `aria2_tests`; that executable is not runnable for most cross targets |
 | `UPX_ENABLED` / `upx` | `yes` | Enables compression where the target safety map permits it |
 | `BUILD_APK` | `auto` | Builds APK v3 when apk-tools 3 is available; CI enables it explicitly with the 25.12.5 SDK |
 | `SOURCE_CACHE_DIR` | `/work/build/src` | Reuses verified dependency archives |
@@ -344,7 +354,7 @@ internal versions.
 | `sdk_version` | target default | Manual workflow SDK override |
 | `publish` | `false` | Allows a complete manual matrix to update the feed and release |
 
-Release builds configure upstream with `BUILD_TESTING=OFF` and request the `aria2-next` target explicitly. Setting `ARIA2_BUILD_TESTS=yes` enables and compiles `aria2_tests`; most cross-target executables still require target hardware or emulation to run.
+Release builds configure upstream with `BUILD_TESTING=OFF` and request the `aria2-next` target explicitly. Setting `ARIA2_BUILD_TESTS=yes` runs the compiler compatibility regressions and enables and compiles `aria2_tests`; most cross-target executables still require target hardware or emulation to run.
 
 ### Build scripts overview
 
@@ -355,11 +365,13 @@ Release builds configure upstream with `BUILD_TESTING=OFF` and request the `aria
 | `versions.sh` | Dependency policy, versions, URLs, and hashes |
 | `sync_dependency_manifest.sh` | Safe upstream manifest reconciliation |
 | `test_dependency_manifest.sh` | Dependency policy regression tests |
+| `cxx_compat.sh` | Target-compiler preflight for the upstream disk implementation's standard header |
+| `test_cxx_compat.sh` | C++ compatibility probe regression tests |
 | `target-map.sh` | Platform to compiler/OpenSSL/UPX mapping |
 | `build_deps_static.sh` | Static dependency build |
 | `build_static_aria2.sh` | aria2-next CMake configuration and selected-target build |
 | `verify_binary.sh` | Static-link and executable smoke verification |
-| `test_binary_runtime.py` | Native HTTP/gzip, HTTPS trust, DoH, token RPC, WebSocket, and BitTorrent regression |
+| `test_binary_runtime.py` | Native HTTP/gzip, HTTPS trust, DoH, authenticated JSON/XML-RPC, WebSocket, and BitTorrent regression |
 | `pack_with_upx.sh` | Optional compression with rollback and integrity testing |
 | `collect_artifacts.sh` | Raw binary and `BUILDINFO` generation |
 | `build_ipk.sh` | Reproducible OpenWrt IPK assembly |
@@ -382,6 +394,7 @@ sh -n setup.sh \
   package/aria2-next-static/files/prerm
 sh build_scripts/test_aria2_init.sh
 bash build_scripts/test_dependency_manifest.sh
+bash build_scripts/test_cxx_compat.sh
 ```
 
 Runnable SDK targets also execute `test_binary_runtime.py` and validate the service's generated configurations with the built binary. The protocol fixture uses loopback HTTP/HTTPS servers and requires Python 3 plus an `openssl` command; both are installed by the SDK entrypoint. Cross-target builds retain static-link checks and need hardware or emulation for runtime coverage.

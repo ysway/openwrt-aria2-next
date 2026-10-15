@@ -11,6 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/cxx_compat.sh"
 
 if [ -z "${TARGET_HOST:-}" ]; then
     log_fatal "TARGET_HOST is not set; source target-map.sh and call resolve_target first"
@@ -20,14 +21,12 @@ TARGET_PROCESSOR="${TARGET_PROCESSOR:-${TARGET_HOST%%-*}}"
 log_info "Building aria2-next from $ARIA2_SRC for $TARGET_HOST ($TARGET_PROCESSOR)"
 
 EXTRA_LIBS_ARRAY=()
-EXTRA_LIBS_STRING=""
 STANDARD_LIBS_ARRAY=()
 STANDARD_LIBS_STRING=""
 
 if [ -n "${EXTRA_LIBS:-}" ]; then
     read -r -a extra_libs_raw <<< "$EXTRA_LIBS"
     mapfile -t EXTRA_LIBS_ARRAY < <(resolve_extra_libs "${TARGET_HOST}-gcc" "${extra_libs_raw[@]}")
-    EXTRA_LIBS_STRING="${EXTRA_LIBS_ARRAY[*]}"
 fi
 
 resolve_target_binutils
@@ -46,11 +45,19 @@ rm -rf "$BUILD_DIR"
 
 COMMON_FLAGS="-O2 -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -flto=auto ${EXTRA_CFLAGS:-}"
 COMMON_CXX_FLAGS="$COMMON_FLAGS"
-# v3.0.1's disk/File.cc uses std::exchange without including <utility>.
-# Supply the missing standard header for this release without modifying the
-# pinned upstream source or depending on libstdc++'s transitive includes.
-if [ "$(get_aria2_version)" = "3.0.1" ]; then
-    COMMON_CXX_FLAGS="$COMMON_CXX_FLAGS -include utility"
+# Older upstream sources use std::exchange without its standard header. Let
+# the target compiler decide whether this source needs the compatibility
+# include, so later releases do not lose it merely because the tag changed.
+read -r -a CXX_PROBE_FLAGS <<< "$COMMON_CXX_FLAGS"
+UTILITY_PREINCLUDE=$(choose_utility_preinclude \
+    "${TARGET_HOST}-g++" "$ARIA2_SRC/src/disk/File.cc" \
+    "${CXX_PROBE_FLAGS[@]}" -std=c++20 \
+    -I"$ARIA2_SRC/src" \
+    -isystem "$ARIA2_SRC/third_party/spdlog/include" \
+    -isystem "$ARIA2_SRC/third_party/boost" \
+    -isystem "$PREFIX/include")
+if [ -n "$UTILITY_PREINCLUDE" ]; then
+    COMMON_CXX_FLAGS="$COMMON_CXX_FLAGS $UTILITY_PREINCLUDE"
 fi
 LINK_FLAGS="-L$PREFIX/lib -static -static-libgcc -static-libstdc++ -Wl,--gc-sections -flto=auto"
 
@@ -59,32 +66,21 @@ TARGET_LIB_DIR=""
 TARGET_TOOLCHAIN_ROOT=""
 TARGET_STAGING_ROOT=""
 FIND_ROOT_PATHS=("$PREFIX")
-LIBRARY_PATHS=("$PREFIX/lib")
-INCLUDE_PATHS=("$PREFIX/include")
 
 if [ -n "$TARGET_LIBC_ARCHIVE" ] && [ "$TARGET_LIBC_ARCHIVE" != "libc.a" ] && [ -f "$TARGET_LIBC_ARCHIVE" ]; then
     TARGET_LIB_DIR=$(dirname "$TARGET_LIBC_ARCHIVE")
     TARGET_TOOLCHAIN_ROOT=$(cd "$TARGET_LIB_DIR/.." && pwd)
     FIND_ROOT_PATHS+=("$TARGET_TOOLCHAIN_ROOT")
-    LIBRARY_PATHS+=("$TARGET_LIB_DIR")
 fi
 
 if [ -n "${STAGING_DIR:-}" ]; then
     TARGET_STAGING_ROOT=$(find "$STAGING_DIR" -maxdepth 1 -name 'target-*' -type d | head -1)
     if [ -n "$TARGET_STAGING_ROOT" ]; then
         FIND_ROOT_PATHS+=("$TARGET_STAGING_ROOT")
-        if [ -d "$TARGET_STAGING_ROOT/usr/lib" ]; then
-            LIBRARY_PATHS+=("$TARGET_STAGING_ROOT/usr/lib")
-        fi
-        if [ -d "$TARGET_STAGING_ROOT/usr/include" ]; then
-            INCLUDE_PATHS+=("$TARGET_STAGING_ROOT/usr/include")
-        fi
     fi
 fi
 
 CMAKE_FIND_ROOT_PATH=$(IFS=';'; echo "${FIND_ROOT_PATHS[*]}")
-CMAKE_LIBRARY_PATH=$(IFS=';'; echo "${LIBRARY_PATHS[*]}")
-CMAKE_INCLUDE_PATH=$(IFS=';'; echo "${INCLUDE_PATHS[*]}")
 
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
@@ -113,12 +109,9 @@ cmake -S "$ARIA2_SRC" -B "$BUILD_DIR" -G Ninja \
     -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
     -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
     -DCMAKE_PREFIX_PATH="$PREFIX" \
-    -DCMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH" \
-    -DCMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH" \
     -DCMAKE_C_FLAGS="$COMMON_FLAGS" \
     -DCMAKE_CXX_FLAGS="$COMMON_CXX_FLAGS" \
     -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
-    -DCMAKE_C_STANDARD_LIBRARIES="$EXTRA_LIBS_STRING" \
     -DCMAKE_CXX_STANDARD_LIBRARIES="$STANDARD_LIBS_STRING" \
     -DARIA2_DEPENDENCY_ROOT="$PREFIX" \
     -DARIA2_BOOST_ROOT="$ARIA2_SRC/third_party/boost" \

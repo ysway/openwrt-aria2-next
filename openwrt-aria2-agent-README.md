@@ -80,7 +80,8 @@ docker run --rm --user root \
 - Dependencies are built in `build_scripts/build_deps_static.sh`.
 - `build_scripts/build_static_aria2.sh` configures aria2-next with CMake/Ninja.
 - Release builds request the `aria2-next` target explicitly. Set
-  `ARIA2_BUILD_TESTS=yes` only when the cross-built test executable is needed.
+  `ARIA2_BUILD_TESTS=yes` to run the compiler compatibility regressions and
+  compile the cross-built test executable.
 - Downloaded dependency archives are accepted only after matching the SHA-256
   values in `build_scripts/versions.sh`; the remaining dependencies use sources
   vendored by the pinned aria2-next submodule.
@@ -99,7 +100,7 @@ docker run --rm --user root \
   definitions and layouts agree. Validate BitTorrent startup through RPC on
   runnable native builds; successful linking and unit tests alone can miss
   this ABI problem. `verify_binary.sh` runs `test_binary_runtime.py` for
-  HTTP/gzip, HTTPS trust, DoH, authenticated HTTP/WebSocket RPC, and BitTorrent,
+  HTTP/gzip, HTTPS trust, DoH, authenticated JSON/XML-RPC, WebSocket, and BitTorrent,
   then validates the generated service configurations with that binary.
 - Keep FFmpeg itself out of LTO. Its runtime-dispatch objects carry different
   ISA flags, and cross-GCC can otherwise reject optional instructions such as
@@ -112,9 +113,13 @@ docker run --rm --user root \
   libtorrent, GPAC, and FFmpeg stack. Disable `ARIA2_SUPERBUILD` and supply
   `ARIA2_DEPENDENCY_ROOT` and `ARIA2_BOOST_ROOT` for our prebuilt libraries;
   do not pass removed legacy feature switches that CMake merely ignores.
-- v3.0.1 needs a C++-only `-include utility` workaround for `std::exchange`
-  in `src/disk/File.cc`. Keep it scoped to that release; do not dirty the
-  upstream gitlink or add the C++ header to C compiler flags.
+- `cxx_compat.sh` preflights the actual upstream `src/disk/File.cc` with the
+  target C++ compiler. Use the C++-only `-include utility` workaround only when
+  plain compilation fails and that include makes it succeed; unrelated errors
+  must fail the build. Keep `test_cxx_compat.sh` passing. Do not gate the fix by
+  a version string, dirty the upstream gitlink, or add the header to C flags.
+  Upstream 3.0.4 includes `<utility>`, so its plain compile should pass and
+  the compatibility flag should be absent.
 - Vendored Boost supplies Asio networking, Beast HTTP/WebSocket RPC, JSON,
   and libtorrent headers; spdlog supplies logging. wslay was removed upstream.
   curl uses its threaded resolver, and its DNS-over-HTTPS support is enabled
@@ -151,6 +156,7 @@ sh -n package/aria2-next-static/files/aria2-next.init \
   package/aria2-next-static/files/prerm
 sh build_scripts/test_aria2_init.sh
 bash build_scripts/test_dependency_manifest.sh
+bash build_scripts/test_cxx_compat.sh
 bash build_scripts/ci_matrix.sh x86_64,aarch64_cortex-a53
 ```
 
@@ -177,10 +183,21 @@ BitTorrent RPC startup/shutdown check, then representative cross-target builds.
 - Replace old raw binary asset `aria2c` with `aria2-next`.
 - Keep service config compatibility with official OpenWrt aria2 where practical.
 - Do not introduce a conflict with the official `aria2` package unless a future task explicitly requests it.
-- Version 3 supports JSON-RPC over HTTP/WebSocket, not XML-RPC, JSONP, Metalink
-  3, or libaria2. Built-in RPC TLS was removed. Reject RPC TLS options in UCI
-  and `extra_settings` so an old secure configuration cannot start plaintext;
+- Version 3 supports JSON-RPC over HTTP/WebSocket and, since 3.0.2, XML-RPC at
+  `/rpc` with the same token authentication. JSONP, Metalink 3, and libaria2
+  remain unavailable. Built-in RPC TLS was removed. Reject RPC TLS options in
+  UCI and `extra_settings`, including bare `rpc-secure` flags accepted by the
+  newer parser, so an old secure configuration cannot start plaintext;
   recommend a TLS reverse proxy with the existing token secret.
+- Version 3.0.4 restores `thunder://` URI handling and adds `aria2.moveDownload`
+  for moving unfinished downloads. Destinations must remain accessible in the
+  procd jail and writable by the service user; do not broaden mounts implicitly.
+  Keep `incomplete-suffix` optional and empty
+  by default. `auto-file-renaming-style` and `download-result` can be supplied
+  through existing `extra_settings`; do not impose new package defaults.
+- Since 3.0.3, `file-allocation=none` and `trunc` are sparse, while `prealloc`
+  and `falloc` reserve space before downloading. Retain the sample's `none`
+  profile and account for preallocation work and storage use on small routers.
 - Use UCI `state_save_interval` (minimum 1 second); `auto_save_interval` remains
   an alias, but 0 is invalid. Map `bt_detach_seed_only` to `detach_share_only`
   and `peer_id_prefix` to `bt_peer_id_prefix`. `disk_cache` is retired upstream
