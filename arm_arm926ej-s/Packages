@@ -1,0 +1,19 @@
+Package: aria2-next-static
+Version: 3.0.5-1
+Architecture: arm_arm926ej-s
+Maintainer: openwrt-aria2-next
+Description: aria2-next download utility (statically linked)
+ A maintained aria2-compatible download utility with ED2K, BitTorrent,
+ Metalink 4, HLS, MPEG-DASH, and HTTP/HTTPS/SFTP support. This package ships a
+ statically linked aria2-next binary built with Expat, SQLite, OpenSSL,
+ libssh2, zlib, curl, nghttp2, Boost, spdlog, libtorrent, GPAC, and
+ FFmpeg. DNS is asynchronous through the core Boost.Asio system resolver and
+ curl's threaded resolver.
+Installed-Size: 4700160
+Section: net
+Priority: optional
+Filename: aria2-next-static_3.0.5-1_arm_arm926ej-s.ipk
+Size: 4679540
+MD5Sum: cfcea94b2221bf27cc143e796b441342
+SHA256sum: 4d66f3de59f7d89d071a909a5737f2223813fb6b15e2040ed443edb0cdf5ba83
+
